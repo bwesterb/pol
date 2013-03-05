@@ -20,7 +20,7 @@ class Program(object):
                             metavar='PATH',
                     help='Path to safe')
         parser.add_argument('--verbose', '-v', action='count', dest='verbosity',
-                    help='Path to safe')
+                    help='Add these to make pol chatty')
         subparsers = parser.add_subparsers(title='commands')
 
         p_init = subparsers.add_parser('init',

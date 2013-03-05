@@ -24,6 +24,9 @@ if not number._fastmath:
 
 def _find_safe_prime(bits=1024):
     """ Finds a safe prime of `bits` bits """
+    # TODO display progress: we can estimate beforehand the chance that a
+    #      random number is a safe prime.  Then we can show after N tries
+    #      the chance that after N tries a safe prime has been found.
     randfunc = Crypto.Random.new().read
     q = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
     while True:

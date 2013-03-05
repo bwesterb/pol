@@ -27,6 +27,9 @@ class Program(object):
                     help='Create a new safe')
         p_init.add_argument('--ncontainers', '-n', type=int, default=1,
                     help='Initial number of containers')
+        p_init.add_argument('--rerand-bits', '-R', type=int, default=1024,
+                    help='Minimal size in bits of prime used for '+
+                            'rerandomization')
         p_init.set_defaults(func=self.cmd_init)
 
         p_touch = subparsers.add_parser('touch',
@@ -52,7 +55,9 @@ class Program(object):
         return self.args.func()
 
     def cmd_init(self):
-        safe = pol.safe.Safe.generate(nthreads=self.args.threads)
+        # TODO add sanity checks for rerand_bits and nthreads
+        safe = pol.safe.Safe.generate(nthreads=self.args.threads,
+                                      gp_bits=self.args.rerand_bits)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     

@@ -62,9 +62,10 @@ class ElGamalSafe(Safe):
                 raise SafeFormatError("Missing attr `%s'" % attr)
     
     @staticmethod
-    def generate(n_blocks=1024, block_index_size=2, kd=None, nthreads=None):
+    def generate(n_blocks=1024, block_index_size=2, kd=None,
+                    gp_bits=1024, nthreads=None):
         """ Creates a new safe. """
-        gp = pol.elgamal.generate_group_params(nthreads=nthreads)
+        gp = pol.elgamal.generate_group_params(bits=gp_bits, nthreads=nthreads)
         if kd is None:
             kd = pol.kd.KeyDerivation.setup()
         safe = Safe(

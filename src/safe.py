@@ -9,6 +9,8 @@ import pol.elgamal
 import msgpack
 import gmpy
 
+# TODO Generating random numbers seems CPU-bound.  Does the default random
+#      generator wait for a certain amount of entropy?
 import Crypto.Random
 import Crypto.Random.random as random
 

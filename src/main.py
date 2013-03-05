@@ -63,5 +63,8 @@ class Program(object):
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
 
-if __name__ == '__main__':
+def entrypoint():
     sys.exit(Program().main())
+
+if __name__ == '__main__':
+    entrypoint()

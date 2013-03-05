@@ -92,7 +92,7 @@ class ElGamalSafe(Safe):
         self.data['blocks'] = pool.map(_rerandomize_block,
                     [(gp.g, gp.p, b) for b in self.data['blocks']])
         secs = time.time() - start_time
-        kbps = self.nblocks * gmpy.num_digits(gp.p,2) / 1024.0 / 8.0 / secs
+        kbps = self.nblocks * gmpy.numdigits(gp.p,2) / 1024.0 / 8.0 / secs
         l.debug(" done in %.2fs; that is %.2f KB/s", secs, kbps)
 
 def _rerandomize_block(g_p_block):

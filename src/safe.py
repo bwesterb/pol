@@ -7,7 +7,7 @@ import multiprocessing
 import pol.elgamal
 
 import msgpack
-import gmpy2
+import gmpy
 
 import Crypto.Random
 import Crypto.Random.random as random
@@ -56,12 +56,12 @@ class ElGamalSafe(Safe):
                 {'type': 'elgamal',
                  'n-blocks': n_blocks,
                  'block-index-size': block_index_size,
-                 'group-params': map(gmpy2.to_binary, gp),
+                 'group-params': [x.binary() for x in gp],
                  'blocks': [[
                     # FIXME stub
-                    gmpy2.to_binary(gmpy2.mpz(random.randint(2, int(gp.p)))),
-                    gmpy2.to_binary(gmpy2.mpz(random.randint(2, int(gp.p)))),
-                    gmpy2.to_binary(gmpy2.mpz(random.randint(2, int(gp.p))))
+                    gmpy.mpz(random.randint(2, int(gp.p))).binary(),
+                    gmpy.mpz(random.randint(2, int(gp.p))).binary(),
+                    gmpy.mpz(random.randint(2, int(gp.p))).binary()
                             ]
                          for i in xrange(n_blocks)]})
         return safe
@@ -75,7 +75,7 @@ class ElGamalSafe(Safe):
     def group_params(self):
         """ The group parameters. """
         return pol.elgamal.group_parameters(
-                    *map(gmpy2.from_binary, self.data['group-params']))
+                    *[gmpy.mpz(x, 256) for x in self.data['group-params']])
     
     def rerandomize(self, nthreads=None):
         """ Rerandomizes blocks: they will still decrypt to the same
@@ -90,15 +90,19 @@ class ElGamalSafe(Safe):
         self.data['blocks'] = pool.map(_rerandomize_block,
                     [(gp.g, gp.p, b) for b in self.data['blocks']])
         secs = time.time() - start_time
-        kbps = self.nblocks * gmpy2.num_digits(gp.p,2) / 1024.0 / 8.0 / secs
+        kbps = self.nblocks * gmpy.num_digits(gp.p,2) / 1024.0 / 8.0 / secs
         l.debug(" done in %.2fs; that is %.2f KB/s", secs, kbps)
 
 def _rerandomize_block(g_p_block):
     g, p, raw_b = g_p_block
     s = random.randint(2, int(p))
-    b = map(gmpy2.from_binary, raw_b)
+    b = [gmpy.mpz(raw_b[0], 256),
+         gmpy.mpz(raw_b[1], 256),
+         gmpy.mpz(raw_b[2], 256)]
     b[0] = (b[0] * pow(g, s, p)) % p
     b[1] = (b[1] * pow(b[2], s, p)) % p
-    return map(gmpy2.to_binary, b)
+    raw_b[0] = b[0].binary()
+    raw_b[1] = b[1].binary()
+    return raw_b
 
 TYPE_MAP = {'elgamal': ElGamalSafe}

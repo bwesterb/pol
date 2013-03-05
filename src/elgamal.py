@@ -12,7 +12,7 @@ import Crypto.Util.number as number
 import Crypto.Random
 
 # gmpy
-import gmpy2
+import gmpy
 
 group_parameters = collections.namedtuple('group_parameters', ('p', 'g'))
 
@@ -25,11 +25,11 @@ if not number._fastmath:
 def _find_safe_prime(bits=1024):
     """ Finds a safe prime of `bits` bits """
     randfunc = Crypto.Random.new().read
-    q = gmpy2.mpz(number.getRandomNBitInteger(bits-1, randfunc))
+    q = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
     while True:
-        q = gmpy2.next_prime(q)
+        q = gmpy.next_prime(q)
         p = 2*q+1
-        if gmpy2.is_prime(p):
+        if gmpy.is_prime(p):
             return p
 
 def generate_group_params(bits=1024, nthreads=None):
@@ -61,10 +61,10 @@ def generate_group_params(bits=1024, nthreads=None):
     p = _p[0]
     q = (p - 1) / 2
     while True:
-        g = gmpy2.mpz(number.getRandomRange(3, p))
+        g = gmpy.mpz(number.getRandomRange(3, p))
         if (pow(g, 2, p) == 1 or pow(g, q, p) == 1 or divmod(p-1, g)[1] == 0):
             continue
-        ginv = gmpy2.invert(g, p)
+        ginv = gmpy.invert(g, p)
         if divmod(p - 1, ginv)[1] == 0:
             continue
         break

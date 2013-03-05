@@ -16,7 +16,7 @@ setup(
     install_requires = [
         'pycrypto>=2.6',        # TODO do we need this version
         'msgpack-python>=0.2',  #      ibidem
-        'gmpy2>=2.0.0b4',       #      ibidem
+        'gmpy>=1.15',           #      ibidem
         ],
     entry_points = {
         'console_scripts': [

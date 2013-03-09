@@ -35,6 +35,9 @@ class Safe(object):
         msgpack.pack(self.data, stream)
         l.info(' packed in %.2fs', time.time() - start_time)
 
+    def open(self, password):
+        pass
+
     @staticmethod
     def load(stream):
         start_time = time.time()

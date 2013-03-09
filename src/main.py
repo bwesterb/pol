@@ -7,6 +7,7 @@
 import argparse
 import logging
 import os.path
+import getpass
 import sys
 
 import pol.safe
@@ -31,6 +32,10 @@ class Program(object):
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
         p_init.set_defaults(func=self.cmd_init)
+
+        p_list = subparsers.add_parser('list',
+                    help='List entries')
+        p_list.set_defaults(func=self.cmd_list)
 
         p_touch = subparsers.add_parser('touch',
                     help='Rerandomizes blocks')
@@ -67,6 +72,11 @@ class Program(object):
         safe.rerandomize(nthreads=self.args.threads)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
+
+    def cmd_list(self):
+        with open(os.path.expanduser(self.args.safe)) as f:
+            safe = pol.safe.Safe.load(f)
+        safe.open(getpass.getpass('Enter (list-)password: '))
 
 def entrypoint():
     sys.exit(Program().main())

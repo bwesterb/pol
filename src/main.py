@@ -61,8 +61,22 @@ class Program(object):
 
     def cmd_init(self):
         # TODO add sanity checks for rerand_bits and nthreads
+        def progress(step, x):
+            # TODO this is a stub
+            if step == 'gp':
+                width = 80
+                p95 = int(min(x.n / x.n95, 1) * width)
+                p50 = int(min(x.n / x.n50, 1) * width)
+                p5 = int(min(x.n / x.n5, 1) * width)
+                b95 = p95
+                b50 = p50 - p95
+                b5 = p5 - p50
+                sys.stdout.write('#'*b95 + '='*b50 + '-'*b5 + '\b'*width)
+                sys.stdout.flush()
         safe = pol.safe.Safe.generate(nthreads=self.args.threads,
-                                      gp_bits=self.args.rerand_bits)
+                                      gp_bits=self.args.rerand_bits,
+                                      progress=progress)
+        print
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     

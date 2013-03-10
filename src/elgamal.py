@@ -1,5 +1,6 @@
 """ Extensions to pycrypto's implementation of ElGamal. """
 
+import math
 import time
 import logging
 import threading
@@ -14,54 +15,65 @@ import Crypto.Random
 # gmpy
 import gmpy
 
+import pol.parallel
+
 group_parameters = collections.namedtuple('group_parameters', ('p', 'g'))
+gp_generation_progress = collections.namedtuple('gp_generation_progress',
+                                ('n', 'n5', 'n50', 'n95', 'p'))
+
 
 l = logging.getLogger(__name__)
+
+# Estimates of safe prime density.
+# TODO add more explanation
+SAFE_PRIME_DENSITY = {
+        128:  0.01493381,
+        256:  0.00734759,
+        512:  0.00374558,
+        1024: 0.00180737,
+        2048: 0.00097234 }
 
 if not number._fastmath:
     l.warning("pycrypto not built with _fastmath module.  A lot will be quite "+
               "slow")
 
-def _find_safe_prime(bits=1024):
-    """ Finds a safe prime of `bits` bits """
-    # TODO display progress: we can estimate beforehand the chance that a
-    #      random number is a safe prime.  Then we can show after N tries
-    #      the chance that after N tries a safe prime has been found.
-    randfunc = Crypto.Random.new().read
-    q = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
-    while True:
-        q = gmpy.next_prime(q)
-        p = 2*q+1
-        if gmpy.is_prime(p):
-            return p
+def _find_safe_prime_initializer(args, kwargs):
+    Crypto.Random.atfork()
+    kwargs['randfunc'] = Crypto.Random.new().read
 
-def generate_group_params(bits=1024, nthreads=None):
+def _find_safe_prime(bits=1024, randfunc=None):
+    """ Finds a safe prime of `bits` bits """
+    r = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
+    q = gmpy.next_prime(r)
+    p = 2*q+1
+    if gmpy.is_prime(p):
+        return p
+
+def generate_group_params(bits=1024, nthreads=None, progress=None):
     """ Generates group parameters for ElGamal. """
     # Find a safe prime as modulus.  This will take at least several
     # seconds on a single core.  Thus: we will parallelize.
-    if not nthreads:
-        nthreads = multiprocessing.cpu_count()
-    pool = multiprocessing.Pool(nthreads, Crypto.Random.atfork)
     start_time = time.time()
     l.debug('Searching for a %s bit safe prime p as modulus on %s threads',
                 bits, nthreads)
-    done_event = threading.Event()
-    _p = [None]
-    def done(result):
-        l.debug('Found one in %.2fs', time.time() - start_time)
-        _p[0] = result
-        done_event.set()
-    for i in xrange(nthreads):
-        pool.apply_async(_find_safe_prime, (bits,), {}, done)
-    done_event.wait()
-    pool.terminate()
-
+    safe_prime_density = SAFE_PRIME_DENSITY.get(bits, 2.0 / bits)
+    if progress:
+        def _progress(n):
+            p = 1 - (1 - safe_prime_density) ** (n+1)
+            n5 = math.log(1 - 0.05, 1 - safe_prime_density)
+            n50 = math.log(1 - 0.5, 1 - safe_prime_density)
+            n95 = math.log(1 - 0.95, 1 - safe_prime_density)
+            progress(gp_generation_progress(n, n5, n50, n95, p))
+    else:
+        _progress = None
+    p = pol.parallel.parallel_try(_find_safe_prime, (bits,),
+                            initializer=_find_safe_prime_initializer,
+                            progress=_progress)
     # Find a safe `g` as generator.
     # Algorithm taken from Crypto.PublicKey.ElGamal.generate
     # TODO Should we use a generator of a subgroup for performance?
     l.debug('Searching for a suitable generator g')
     start_time = time.time()
-    p = _p[0]
     q = (p - 1) / 2
     while True:
         g = gmpy.mpz(number.getRandomRange(3, p))

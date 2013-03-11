@@ -11,6 +11,7 @@ import getpass
 import sys
 
 import pol.safe
+import pol.progressbar
 
 class Program(object):
     def parse_args(self):
@@ -61,22 +62,17 @@ class Program(object):
 
     def cmd_init(self):
         # TODO add sanity checks for rerand_bits and nthreads
+        progressbar = pol.progressbar.ProbablisticProgressBar()
         def progress(step, x):
-            # TODO this is a stub
-            if step == 'gp':
-                width = 80
-                p95 = int(min(x.n / x.n95, 1) * width)
-                p50 = int(min(x.n / x.n50, 1) * width)
-                p5 = int(min(x.n / x.n5, 1) * width)
-                b95 = p95
-                b50 = p50 - p95
-                b5 = p5 - p50
-                sys.stdout.write('#'*b95 + '='*b50 + '-'*b5 + '\b'*width)
-                sys.stdout.flush()
+            if step == 'p' and x is None:
+                progressbar.start()
+            elif step == 'p' and x:
+                progressbar(x)
+            elif step == 'g':
+                progressbar.end()
         safe = pol.safe.Safe.generate(nthreads=self.args.threads,
                                       gp_bits=self.args.rerand_bits,
                                       progress=progress)
-        print
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     

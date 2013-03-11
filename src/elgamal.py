@@ -16,11 +16,9 @@ import Crypto.Random
 import gmpy
 
 import pol.parallel
+import pol.progressbar
 
 group_parameters = collections.namedtuple('group_parameters', ('p', 'g'))
-gp_generation_progress = collections.namedtuple('gp_generation_progress',
-                                ('n', 'n5', 'n50', 'n95', 'p'))
-
 
 l = logging.getLogger(__name__)
 
@@ -41,7 +39,7 @@ def _find_safe_prime_initializer(args, kwargs):
     Crypto.Random.atfork()
     kwargs['randfunc'] = Crypto.Random.new().read
 
-def _find_safe_prime(bits=1024, randfunc=None):
+def _find_safe_prime(bits, randfunc=None):
     """ Finds a safe prime of `bits` bits """
     r = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
     q = gmpy.next_prime(r)
@@ -54,24 +52,25 @@ def generate_group_params(bits=1024, nthreads=None, progress=None):
     # Find a safe prime as modulus.  This will take at least several
     # seconds on a single core.  Thus: we will parallelize.
     start_time = time.time()
+    if nthreads is None:
+        nthreads = multiprocessing.cpu_count()
     l.debug('Searching for a %s bit safe prime p as modulus on %s threads',
                 bits, nthreads)
     safe_prime_density = SAFE_PRIME_DENSITY.get(bits, 2.0 / bits)
     if progress:
+        progress('p', None)
         def _progress(n):
-            p = 1 - (1 - safe_prime_density) ** (n+1)
-            n5 = math.log(1 - 0.05, 1 - safe_prime_density)
-            n50 = math.log(1 - 0.5, 1 - safe_prime_density)
-            n95 = math.log(1 - 0.95, 1 - safe_prime_density)
-            progress(gp_generation_progress(n, n5, n50, n95, p))
+            progress('p', pol.progressbar.coin(safe_prime_density, n))
     else:
         _progress = None
     p = pol.parallel.parallel_try(_find_safe_prime, (bits,),
                             initializer=_find_safe_prime_initializer,
-                            progress=_progress)
+                            progress=_progress, nthreads=nthreads)
     # Find a safe `g` as generator.
     # Algorithm taken from Crypto.PublicKey.ElGamal.generate
     # TODO Should we use a generator of a subgroup for performance?
+    if progress:
+        progress('g', None)
     l.debug('Searching for a suitable generator g')
     start_time = time.time()
     q = (p - 1) / 2

@@ -25,11 +25,13 @@ l = logging.getLogger(__name__)
 # Estimates of safe prime density.
 # TODO add more explanation
 SAFE_PRIME_DENSITY = {
-        128:  0.01493381,
-        256:  0.00734759,
-        512:  0.00374558,
-        1024: 0.00180737,
-        2048: 0.00097234 }
+        128:  0.01499972,
+        256:  0.00746354,
+        512:  0.00372540,
+        1024: 0.00185757,
+        2048: 0.00094085 }
+twin_primes_constant = 0.66016181584686961514307768084108829498291015625
+asymptotic_safe_prime_density = 2 * twin_primes_constant / math.log(2)
 
 if not number._fastmath:
     l.warning("pycrypto not built with _fastmath module.  A lot will be quite "+
@@ -56,7 +58,8 @@ def generate_group_params(bits=1024, nthreads=None, progress=None):
         nthreads = multiprocessing.cpu_count()
     l.debug('Searching for a %s bit safe prime p as modulus on %s threads',
                 bits, nthreads)
-    safe_prime_density = SAFE_PRIME_DENSITY.get(bits, 2.0 / bits)
+    safe_prime_density = SAFE_PRIME_DENSITY.get(bits,
+                asymptotic_safe_prime_density / (bits - 1))
     if progress:
         progress('p', None)
         def _progress(n):

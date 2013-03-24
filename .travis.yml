@@ -2,5 +2,6 @@ language: python
 python:
  - "2.7"
 install:
+ - "apt-get install libgmp-dev"
  - "python setup.py install"
  - "python unittest discover"

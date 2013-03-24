@@ -8,6 +8,7 @@ import argparse
 import logging
 import os.path
 import getpass
+import pprint
 import sys
 
 import pol.safe
@@ -41,6 +42,10 @@ class Program(object):
         p_touch = subparsers.add_parser('touch',
                     help='Rerandomizes blocks')
         p_touch.set_defaults(func=self.cmd_touch)
+
+        p_raw = subparsers.add_parser('raw',
+                    help='Shows raw data of safe')
+        p_raw.set_defaults(func=self.cmd_raw)
 
         self.args = parser.parse_args()
 
@@ -82,6 +87,13 @@ class Program(object):
         safe.rerandomize(nthreads=self.args.threads)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
+
+    def cmd_raw(self):
+        with open(os.path.expanduser(self.args.safe)) as f:
+            safe = pol.safe.Safe.load(f)
+        d = safe.data
+        del d['blocks']
+        pprint.pprint(d)
 
     def cmd_list(self):
         with open(os.path.expanduser(self.args.safe)) as f:

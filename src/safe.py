@@ -77,10 +77,14 @@ class ElGamalSafe(Safe):
     
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, kd=None, _hash=None,
-                    gp_bits=1024, nthreads=None, progress=None):
+                    gp_bits=1024, precomputed_gp=False,
+                    nthreads=None, progress=None):
         """ Creates a new safe. """
-        gp = pol.elgamal.generate_group_params(bits=gp_bits, nthreads=nthreads,
-                                                    progress=progress)
+        if precomputed_gp:
+            gp = pol.elgamal.precomputed_group_params(gp_bits)
+        else:
+            gp = pol.elgamal.generate_group_params(bits=gp_bits,
+                                    nthreads=nthreads, progress=progress)
         if kd is None:
             kd = pol.kd.KeyDerivation.setup()
         if _hash is None:

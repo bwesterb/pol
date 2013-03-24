@@ -33,6 +33,9 @@ class Program(object):
         p_init.add_argument('--rerand-bits', '-R', type=int, default=1024,
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
+        p_init.add_argument('--precomputed-group-parameters', '-P',
+                        action='store_true', dest='precomputed_gp',
+                    help='Use precomputed group parameters for rerandomization')
         p_init.set_defaults(func=self.cmd_init)
 
         p_list = subparsers.add_parser('list',
@@ -79,7 +82,8 @@ class Program(object):
                 progressbar.end()
         safe = pol.safe.Safe.generate(nthreads=self.args.threads,
                                       gp_bits=self.args.rerand_bits,
-                                      progress=progress)
+                                      progress=progress,
+                                      precomputed_gp=self.args.precomputed_gp)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     

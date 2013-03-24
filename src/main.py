@@ -15,7 +15,7 @@ import pol.safe
 import pol.progressbar
 
 class Program(object):
-    def parse_args(self):
+    def parse_args(self, argv):
         parser = argparse.ArgumentParser()
         parser.add_argument('--threads', '-t', type=int, metavar='N',
                     help='Number of worker threads')
@@ -52,11 +52,11 @@ class Program(object):
                     help='Also print blocks')
         p_raw.set_defaults(func=self.cmd_raw)
 
-        self.args = parser.parse_args()
+        self.args = parser.parse_args(argv)
 
-    def main(self):
+    def main(self, argv):
         # Parse arguments
-        self.parse_args()
+        self.parse_args(argv)
 
         # Set up logging
         if self.args.verbosity >= 2:
@@ -107,8 +107,8 @@ class Program(object):
             safe = pol.safe.Safe.load(f)
         safe.open(getpass.getpass('Enter (list-)password: '))
 
-def entrypoint():
-    sys.exit(Program().main())
+def entrypoint(argv):
+    return Program().main(argv)
 
 if __name__ == '__main__':
-    entrypoint()
+    sys.exit(entrypoint(sys.argv[1:]))

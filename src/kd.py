@@ -31,6 +31,9 @@ class KeyDerivation(object):
             raise KeyDerivationParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
+    def derive(self, password, salt):
+        raise NotImplementedError
+
 class ScryptKeyDerivation(KeyDerivation):
     """ scrypt is the default key derivation """
 

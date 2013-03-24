@@ -7,6 +7,7 @@ import multiprocessing
 
 import pol.elgamal
 import pol.kd
+import pol.hash
 
 import msgpack
 import gmpy
@@ -34,7 +35,10 @@ class Safe(object):
         self.data = data
         if 'key-derivation' not in self.data:
             raise SafeFormatError("Missing `key-derivation' attribute")
+        if 'hash' not in self.data:
+            raise SafeFormatError("Missing `hash' attribute")
         self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
+        self.hash = pol.hash.Hash.setup(self.data['hash'])
 
     def store(self, stream):
         start_time = time.time()
@@ -72,19 +76,22 @@ class ElGamalSafe(Safe):
                 raise SafeFormatError("Missing attr `%s'" % attr)
     
     @staticmethod
-    def generate(n_blocks=1024, block_index_size=2, kd=None,
+    def generate(n_blocks=1024, block_index_size=2, kd=None, _hash=None,
                     gp_bits=1024, nthreads=None, progress=None):
         """ Creates a new safe. """
         gp = pol.elgamal.generate_group_params(bits=gp_bits, nthreads=nthreads,
                                                     progress=progress)
         if kd is None:
             kd = pol.kd.KeyDerivation.setup()
+        if _hash is None:
+            _hash = pol.hash.Hash.setup()
         safe = Safe(
                 {'type': 'elgamal',
                  'n-blocks': n_blocks,
                  'block-index-size': block_index_size,
                  'group-params': [x.binary() for x in gp],
                  'key-derivation': kd.params,
+                 'hash': _hash.params,
                  'blocks': [[
                     # FIXME stub
                     gmpy.mpz(random.randint(2, int(gp.p))).binary(),

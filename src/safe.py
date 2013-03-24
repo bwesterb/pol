@@ -2,6 +2,7 @@
 
 import time
 import logging
+import binascii
 import multiprocessing
 
 import pol.elgamal
@@ -16,6 +17,12 @@ import Crypto.Random
 import Crypto.Random.random as random
 
 l = logging.getLogger(__name__)
+
+# Constants used for access slices
+AS_MAGIC = binascii.unhexlify('1a1a8ad7')  # starting bytes of an access slice
+AS_FULL = 0         # the access slice gives full access
+AS_LIST = 1         # the access slice gives list-only access
+AS_APPEND = 2       # the access slice gives append-only access
 
 class SafeFormatError(ValueError):
     pass

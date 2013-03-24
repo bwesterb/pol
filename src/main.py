@@ -45,6 +45,8 @@ class Program(object):
 
         p_raw = subparsers.add_parser('raw',
                     help='Shows raw data of safe')
+        p_raw.add_argument('--blocks', '-b', action='store_true', dest='blocks',
+                    help='Also print blocks')
         p_raw.set_defaults(func=self.cmd_raw)
 
         self.args = parser.parse_args()
@@ -92,7 +94,8 @@ class Program(object):
         with open(os.path.expanduser(self.args.safe)) as f:
             safe = pol.safe.Safe.load(f)
         d = safe.data
-        del d['blocks']
+        if not self.args.blocks:
+            del d['blocks']
         pprint.pprint(d)
 
     def cmd_list(self):

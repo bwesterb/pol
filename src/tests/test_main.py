@@ -16,8 +16,6 @@ class TestMain(unittest.TestCase):
         self.assertEqual(self.pol('touch'), 0)
     def test_raw(self):
         self.assertEqual(self.pol('raw'), 0)
-    def test_raw_blocks(self):
-        self.assertEqual(self.pol('raw', '--blocks'), 0)
 
 if __name__ == '__main__':
     unittest.main()

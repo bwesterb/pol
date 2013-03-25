@@ -31,6 +31,7 @@ pol /pɵl/ is a password manager with two important features:
       and a password of one of the containers, he cannot prove that there
       are more containers.
 
-[![Build Status](https://travis-ci.org/bwesterb/pol.png)](https://travis-ci.org/bwesterb/pol)
+[![Build Status](https://travis-ci.org/bwesterb/pol.png)](
+   https://travis-ci.org/bwesterb/pol)
       
 <!-- vim: set shiftwidth=4:tabstop=4:expandtab: -->

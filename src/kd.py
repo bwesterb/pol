@@ -4,6 +4,9 @@ import logging
 
 import scrypt
 
+# FIXME There is a bug in scrypt 0.5.5 that causes a crash when we
+#       try to specify r or p.
+
 l = logging.getLogger(__name__)
 
 class KeyDerivationParameterError(ValueError):
@@ -23,9 +26,9 @@ class KeyDerivation(object):
         """ Set-up the key-derivation given by `params`. """
         if params is None:
             params = {'type': 'scrypt',
-                      'Nexp': 15,
-                      'r': 8,
-                      'p': 1}
+                      #'r': 8,
+                      #'p': 1,
+                      'Nexp': 15}
         if ('type' not in params or not isinstance(params['type'], basestring)
                 or params['type'] not in TYPE_MAP):
             raise KeyDerivationParameterError("Invalid `type' attribute")
@@ -39,23 +42,24 @@ class ScryptKeyDerivation(KeyDerivation):
 
     def __init__(self, params):
         super(ScryptKeyDerivation, self).__init__(params)
-        for attr in ('Nexp', 'r', 'p'):
+        #for attr in ('Nexp', 'r', 'p'):
+        for attr in ('Nexp',):
             if not attr in params:
                 raise KeyDerivationParameterError("Missing param `%s'" % attr)
             if not isinstance(params[attr], int):
                 raise KeyDerivationParameterError("%s should be int" % attr)
             if params[attr] < 0:
                 raise KeyDerivationParameterError("%s should be positive"% attr)
-        if params['r'] * params['p'] >= 2**30:
-            raise KeyDerivationParameterError("r*p is too large")
+        #if params['r'] * params['p'] >= 2**30:
+        #    raise KeyDerivationParameterError("r*p is too large")
         if params['Nexp'] <= 1:
             raise KeyDerivationParameterError("Nexp is too small")
 
     def derive(self, password, salt):
         return scrypt.hash(password,
                            salt,
-                           2**self.params['Nexp'],
-                           self.params['r'],
-                           self.params['p'])
+                           #r=self.params['r'],
+                           #p=self.params['p'],
+                           N=2**self.params['Nexp'])
 
 TYPE_MAP = {'scrypt': ScryptKeyDerivation}

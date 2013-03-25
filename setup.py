@@ -10,7 +10,7 @@ setup(
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',
     url='http://github.com/bwesterb/pol/',
-    packages=['pol'],
+    packages=['pol', 'pol.tests'],
     package_dir={'pol': 'src'},
     license='GPL 3.0',
     install_requires = [

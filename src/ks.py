@@ -41,7 +41,7 @@ class KeyStretching(object):
             raise KeyStretchingParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
-    def derive(self, password):
+    def stretch(self, password):
         raise NotImplementedError
 
 class ScryptKeyStretching(KeyStretching):
@@ -65,9 +65,9 @@ class ScryptKeyStretching(KeyStretching):
             raise KeyStretchingParameterError("Nexp is too small")
 
     def __call__(self, password):
-        return self.derive(password)
+        return self.stretch(password)
 
-    def derive(self, password):
+    def stretch(self, password):
         return scrypt.hash(password,
                            self.params['salt'],
                            #r=self.params['r'],

@@ -1,6 +1,7 @@
 """ Implementation of pol safes.  See `Safe`. """
 
 import time
+import struct
 import logging
 import binascii
 import multiprocessing
@@ -24,6 +25,13 @@ AS_MAGIC = binascii.unhexlify('1a1a8ad7')  # starting bytes of an access slice
 AS_FULL = 0         # the access slice gives full access
 AS_LIST = 1         # the access slice gives list-only access
 AS_APPEND = 2       # the access slice gives append-only access
+
+# We derive multiple keys from one base key using hashing and
+# constants. For instance, given a base key K, the ElGamal private
+# key for of the n-th block is Hash(K, KC_ELGAMAL, n)
+KC_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KC_LIST = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KC_APPEND = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
 
 class SafeFormatError(ValueError):
     pass
@@ -71,10 +79,30 @@ class ElGamalSafe(Safe):
 
     def __init__(self, data):
         super(ElGamalSafe, self).__init__(data)
+        # Check if `data' makes sense.
         for attr in ('group-params', 'n-blocks', 'blocks', 'block-index-size'):
             if not attr in data:
                 raise SafeFormatError("Missing attr `%s'" % attr)
-    
+        for attr, _type in {'blocks': list,
+                            'group-params': list,
+                            'block-index-size': int,
+                            'n-blocks': int}.iteritems():
+            if not isinstance(data[attr], _type):
+                raise SafeFormatError("`%s' should be a `%s'" % (attr, _type))
+        if not len(data['blocks']) == data['n-blocks']:
+            raise SafeFormatError("Amount of blocks isn't `n-blocks'")
+        if not len(data['group-params']) == 2:
+            raise SafeFormatError("`group-params' should contain 2 elements")
+        # TODO Should we check whether the group parameters are safe?
+        for x in data['group-params']:
+            if not isinstance(x, basestring):
+                raise SafeFormatError("`group-params' should contain strings")
+        if data['block-index-size'] == 1:
+            self._block_index_struct = struct.Struct('>B')
+        elif data['block-index-size'] == 4:
+            self._block_index_struct = struct.Struct('>H')
+        elif data['block-index-size'] == 4:
+            self._block_index_struct = struct.Struct('>I')
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, kd=None, _hash=None,
                     gp_bits=1024, precomputed_gp=False,
@@ -111,6 +139,11 @@ class ElGamalSafe(Safe):
         return self.data['n-blocks']
 
     @property
+    def block_index_size(self):
+        """ Size of a block index. """
+        return self.data['block-index-size']
+
+    @property
     def group_params(self):
         """ The group parameters. """
         return pol.elgamal.group_parameters(
@@ -126,13 +159,20 @@ class ElGamalSafe(Safe):
         pool = multiprocessing.Pool(nthreads, Crypto.Random.atfork)
         start_time = time.time()
         gp = self.group_params
-        self.data['blocks'] = pool.map(_rerandomize_block,
+        self.data['blocks'] = pool.map(_eg_rerandomize_block,
                     [(gp.g, gp.p, b) for b in self.data['blocks']])
         secs = time.time() - start_time
         kbps = self.nblocks * gmpy.numdigits(gp.p,2) / 1024.0 / 8.0 / secs
         l.debug(" done in %.2fs; that is %.2f KB/s", secs, kbps)
 
-def _rerandomize_block(g_p_block):
+    def _index_to_bytes(self, index):
+        self._block_index_struct.pack(index)
+    def _index_from_bytes(self, s):
+        self._block_index_struct.unpack(s)
+
+def _eg_rerandomize_block(g_p_block):
+    """ Given [g, p, block], rerandomizes block using group
+        parameters g and p """
     g, p, raw_b = g_p_block
     s = random.randint(2, int(p))
     b = [gmpy.mpz(raw_b[0], 256),

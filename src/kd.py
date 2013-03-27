@@ -2,6 +2,7 @@
 
 import logging
 import hashlib
+import struct
 
 import Crypto.Random
 
@@ -36,16 +37,12 @@ class KeyDerivation(object):
             raise KeyDerivationParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
-    def single(self, data):
-        """ Computes the keyderivation of a single string. """
-        raise NotImplementedError
+    def __call__(self, args, length=32):
+        return self.derive(args, length)
 
-    def multiple(self, *args):
-        """ Computes the keyderivation of a list of strings. """
-        tmp = ''
-        for arg in args:
-            tmp += self.single(arg)
-        return self.single(tmp)
+    def derive(self, args, length=32):
+        """ Derives a key of `length' bytes from the list of strings `args'. """
+        raise NotImplementedError
 
 class SHAKeyDerivation(KeyDerivation):
     """ SHA is the default key derivation """
@@ -65,12 +62,27 @@ class SHAKeyDerivation(KeyDerivation):
                     "We do not support the given `bits'")
         self.bits = params['bits']
         self.salt = params['salt']
+        self.word_struct = struct.Struct(">H")
 
-    def single(self, data):
-        """ Computes the keyderivation of a single string. """
+    def _derive(self, args):
+        """ Derives `self.bits' bit key from args """
         if self.bits == 256:
-            h = hashlib.sha256(data)
-            h.update(self.salt)
-            return h.digest()
+            new_hash = hashlib.sha256
+        else:
+            assert False
+        oh = new_hash()
+        for arg in args:
+            oh.update(new_hash(arg).digest())
+        return oh.digest()
+
+    def derive(self, args, length=32):
+        ret = ''
+        byts = self.bits / 8
+        n = length / byts
+        if length % byts != 0:
+            n += 1
+        for i in xrange(n):
+            ret += self._derive(args + [self.word_struct.pack(i), self.salt])
+        return ret[:length]
 
 TYPE_MAP = {'sha': SHAKeyDerivation}

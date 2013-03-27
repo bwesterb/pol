@@ -28,10 +28,10 @@ AS_APPEND = 2       # the access slice gives append-only access
 
 # We derive multiple keys from one base key using hashing and
 # constants. For instance, given a base key K, the ElGamal private
-# key for of the n-th block is KeyDerivation(K, KC_ELGAMAL, n)
-KC_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KC_LIST = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KC_APPEND = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
+# key for of the n-th block is KeyDerivation(K, KD_ELGAMAL, n)
+KD_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KD_LIST = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KD_APPEND = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
 
 class SafeFormatError(ValueError):
     pass
@@ -86,6 +86,7 @@ class ElGamalSafe(Safe):
         for attr, _type in {'blocks': list,
                             'group-params': list,
                             'block-index-size': int,
+                            'bytes-per-block': int,
                             'n-blocks': int}.iteritems():
             if not isinstance(data[attr], _type):
                 raise SafeFormatError("`%s' should be a `%s'" % (attr, _type))
@@ -103,6 +104,9 @@ class ElGamalSafe(Safe):
             self._block_index_struct = struct.Struct('>H')
         elif data['block-index-size'] == 4:
             self._block_index_struct = struct.Struct('>I')
+        if 2** (data['bytes-per-block']*8) >= self.group_params.p:
+            raise SafeFormatError("`bytes-per-block' larger than "+
+                                  "`group-params' allow")
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, ks=None, kd=None,
                     gp_bits=1024, precomputed_gp=False,
@@ -117,9 +121,11 @@ class ElGamalSafe(Safe):
             ks = pol.ks.KeyStretching.setup()
         if kd is None:
             kd = pol.kd.KeyDerivation.setup()
+        bytes_per_block = (gp_bits - 1) / 8
         safe = Safe(
                 {'type': 'elgamal',
                  'n-blocks': n_blocks,
+                 'bytes-per-block': bytes_per_block,
                  'block-index-size': block_index_size,
                  'group-params': [x.binary() for x in gp],
                  'key-stretching': ks.params,
@@ -137,6 +143,11 @@ class ElGamalSafe(Safe):
     def nblocks(self):
         """ Number of blocks. """
         return self.data['n-blocks']
+
+    @property
+    def bytes_per_block(self):
+        """ Number of bytes stored per block. """
+        return self.data['bytes-per-block']
 
     @property
     def block_index_size(self):
@@ -169,6 +180,11 @@ class ElGamalSafe(Safe):
         self._block_index_struct.pack(index)
     def _index_from_bytes(self, s):
         self._block_index_struct.unpack(s)
+
+    def _privkey_for_block(self, key, index):
+        """ Returns the elgamal private key for the block `index' """
+        return self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
+                            length=self.bytes_per_block)
 
 def _eg_rerandomize_block(g_p_block):
     """ Given [g, p, block], rerandomizes block using group

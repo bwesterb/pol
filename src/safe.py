@@ -8,7 +8,7 @@ import multiprocessing
 
 import pol.elgamal
 import pol.ks
-import pol.hash
+import pol.kd
 
 import msgpack
 import gmpy
@@ -28,7 +28,7 @@ AS_APPEND = 2       # the access slice gives append-only access
 
 # We derive multiple keys from one base key using hashing and
 # constants. For instance, given a base key K, the ElGamal private
-# key for of the n-th block is Hash(K, KC_ELGAMAL, n)
+# key for of the n-th block is KeyDerivation(K, KC_ELGAMAL, n)
 KC_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
 KC_LIST = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
 KC_APPEND = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
@@ -43,10 +43,10 @@ class Safe(object):
         self.data = data
         if 'key-stretching' not in self.data:
             raise SafeFormatError("Missing `key-stretching' attribute")
-        if 'hash' not in self.data:
-            raise SafeFormatError("Missing `hash' attribute")
+        if 'key-derivation' not in self.data:
+            raise SafeFormatError("Missing `key-derivation' attribute")
         self.ks = pol.ks.KeyStretching.setup(self.data['key-stretching'])
-        self.hash = pol.hash.Hash.setup(self.data['hash'])
+        self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
 
     def store(self, stream):
         start_time = time.time()
@@ -104,7 +104,7 @@ class ElGamalSafe(Safe):
         elif data['block-index-size'] == 4:
             self._block_index_struct = struct.Struct('>I')
     @staticmethod
-    def generate(n_blocks=1024, block_index_size=2, ks=None, _hash=None,
+    def generate(n_blocks=1024, block_index_size=2, ks=None, kd=None,
                     gp_bits=1024, precomputed_gp=False,
                     nthreads=None, progress=None):
         """ Creates a new safe. """
@@ -115,15 +115,15 @@ class ElGamalSafe(Safe):
                                     nthreads=nthreads, progress=progress)
         if ks is None:
             ks = pol.ks.KeyStretching.setup()
-        if _hash is None:
-            _hash = pol.hash.Hash.setup()
+        if kd is None:
+            kd = pol.kd.KeyDerivation.setup()
         safe = Safe(
                 {'type': 'elgamal',
                  'n-blocks': n_blocks,
                  'block-index-size': block_index_size,
                  'group-params': [x.binary() for x in gp],
                  'key-stretching': ks.params,
-                 'hash': _hash.params,
+                 'key-derivation': kd.params,
                  'blocks': [[
                     # FIXME stub
                     gmpy.mpz(random.randint(2, int(gp.p))).binary(),

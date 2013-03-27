@@ -1,4 +1,4 @@
-""" Implementation of hashing """
+""" Implementation of key derivation """
 
 import logging
 import hashlib
@@ -7,21 +7,21 @@ import Crypto.Random
 
 l = logging.getLogger(__name__)
 
-class HashParameterError(ValueError):
+class KeyDerivationParameterError(ValueError):
     pass
 
-class Hash(object):
-    """ Cryptographically secure one-way reduction """
+class KeyDerivation(object):
+    """ Cryptographically secure one-way key-derivation """
 
     def __init__(self, params):
-        """ Initialize the Hash with the given parameters.
+        """ Initialize the KeyDerivation with the given parameters.
 
-            NOTE use Hash.setup """
+            NOTE use KeyDerivation.setup """
         self.params = params
 
     @staticmethod
     def setup(params=None, randfunc=None):
-        """ Set-up the hash given by `params`.
+        """ Set-up the keyderivation given by `params`.
         
             If `params' is None, generates new parameters.  In that case
             `randfunc' is used to generate a salt. """
@@ -33,43 +33,44 @@ class Hash(object):
                       'salt': randfunc(32)}
         if ('type' not in params or not isinstance(params['type'], basestring)
                 or params['type'] not in TYPE_MAP):
-            raise HashParameterError("Invalid `type' attribute")
+            raise KeyDerivationParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
     def single(self, data):
-        """ Computes the hash of a single string. """
+        """ Computes the keyderivation of a single string. """
         raise NotImplementedError
 
     def multiple(self, *args):
-        """ Computes the hash of a list of strings. """
+        """ Computes the keyderivation of a list of strings. """
         tmp = ''
         for arg in args:
             tmp += self.single(arg)
         return self.single(tmp)
 
-class SHAHash(Hash):
+class SHAKeyDerivation(KeyDerivation):
     """ SHA is the default key derivation """
 
     def __init__(self, params):
-        super(SHAHash, self).__init__(params)
+        super(SHAKeyDerivation, self).__init__(params)
         if not 'salt' in params:
-            raise HashParameterError("Missing param `salt'")
+            raise KeyDerivationParameterError("Missing param `salt'")
         if not 'bits' in params:
-            raise HashParameterError("Missing param `bits'")
+            raise KeyDerivationParameterError("Missing param `bits'")
         if not isinstance(params['salt'], basestring):
-            raise HashParameterError("`salt' should be a string")
+            raise KeyDerivationParameterError("`salt' should be a string")
         if not isinstance(params['bits'], int):
-            raise HashParameterError("`bits' should be int")
+            raise KeyDerivationParameterError("`bits' should be int")
         if params['bits'] not in (256,):
-            raise HashParameterError("We do not support the given `bits'")
+            raise KeyDerivationParameterError(
+                    "We do not support the given `bits'")
         self.bits = params['bits']
         self.salt = params['salt']
 
     def single(self, data):
-        """ Computes the hash of a single string. """
+        """ Computes the keyderivation of a single string. """
         if self.bits == 256:
             h = hashlib.sha256(data)
             h.update(self.salt)
             return h.digest()
 
-TYPE_MAP = {'sha': SHAHash}
+TYPE_MAP = {'sha': SHAKeyDerivation}

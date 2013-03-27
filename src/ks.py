@@ -41,6 +41,9 @@ class KeyStretching(object):
             raise KeyStretchingParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
+    def __call__(self, password):
+        return self.stretch(password)
+
     def stretch(self, password):
         raise NotImplementedError
 
@@ -63,9 +66,6 @@ class ScryptKeyStretching(KeyStretching):
         #    raise KeyStretchingParameterError("r*p is too large")
         if params['Nexp'] <= 1:
             raise KeyStretchingParameterError("Nexp is too small")
-
-    def __call__(self, password):
-        return self.stretch(password)
 
     def stretch(self, password):
         return scrypt.hash(password,

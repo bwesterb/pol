@@ -109,7 +109,7 @@ class ElGamalSafe(Safe):
                                   "`group-params' allow")
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, ks=None, kd=None,
-                    gp_bits=1024, precomputed_gp=False,
+                    gp_bits=1025, precomputed_gp=False,
                     nthreads=None, progress=None):
         """ Creates a new safe. """
         if precomputed_gp:

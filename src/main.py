@@ -30,7 +30,7 @@ class Program(object):
                     help='Create a new safe')
         p_init.add_argument('--ncontainers', '-n', type=int, default=1,
                     help='Initial number of containers')
-        p_init.add_argument('--rerand-bits', '-R', type=int, default=1024,
+        p_init.add_argument('--rerand-bits', '-R', type=int, default=1025,
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
         p_init.add_argument('--precomputed-group-parameters', '-P',

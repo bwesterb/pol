@@ -1,4 +1,4 @@
-""" Implementation of key derivation  """
+""" Implementation of key stretching  """
 
 import logging
 
@@ -9,21 +9,21 @@ import scrypt
 
 l = logging.getLogger(__name__)
 
-class KeyDerivationParameterError(ValueError):
+class KeyStretchingParameterError(ValueError):
     pass
 
-class KeyDerivation(object):
+class KeyStretching(object):
     """ Derives a key from a password. """
 
     def __init__(self, params):
-        """ Initialize the KeyDerivation with the given parameters.
+        """ Initialize the KeyStretching with the given parameters.
 
-            NOTE use KeyDerivation.setup """
+            NOTE use KeyStretching.setup """
         self.params = params
 
     @staticmethod
     def setup(params=None):
-        """ Set-up the key-derivation given by `params`. """
+        """ Set-up the key-stretching given by `params`. """
         if params is None:
             params = {'type': 'scrypt',
                       #'r': 8,
@@ -31,29 +31,29 @@ class KeyDerivation(object):
                       'Nexp': 15}
         if ('type' not in params or not isinstance(params['type'], basestring)
                 or params['type'] not in TYPE_MAP):
-            raise KeyDerivationParameterError("Invalid `type' attribute")
+            raise KeyStretchingParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
     def derive(self, password, salt):
         raise NotImplementedError
 
-class ScryptKeyDerivation(KeyDerivation):
-    """ scrypt is the default key derivation """
+class ScryptKeyStretching(KeyStretching):
+    """ scrypt is the default for key stretching """
 
     def __init__(self, params):
-        super(ScryptKeyDerivation, self).__init__(params)
+        super(ScryptKeyStretching, self).__init__(params)
         #for attr in ('Nexp', 'r', 'p'):
         for attr in ('Nexp',):
             if not attr in params:
-                raise KeyDerivationParameterError("Missing param `%s'" % attr)
+                raise KeyStretchingParameterError("Missing param `%s'" % attr)
             if not isinstance(params[attr], int):
-                raise KeyDerivationParameterError("%s should be int" % attr)
+                raise KeyStretchingParameterError("%s should be int" % attr)
             if params[attr] < 0:
-                raise KeyDerivationParameterError("%s should be positive"% attr)
+                raise KeyStretchingParameterError("%s should be positive"% attr)
         #if params['r'] * params['p'] >= 2**30:
-        #    raise KeyDerivationParameterError("r*p is too large")
+        #    raise KeyStretchingParameterError("r*p is too large")
         if params['Nexp'] <= 1:
-            raise KeyDerivationParameterError("Nexp is too small")
+            raise KeyStretchingParameterError("Nexp is too small")
 
     def derive(self, password, salt):
         return scrypt.hash(password,
@@ -62,4 +62,4 @@ class ScryptKeyDerivation(KeyDerivation):
                            #p=self.params['p'],
                            N=2**self.params['Nexp'])
 
-TYPE_MAP = {'scrypt': ScryptKeyDerivation}
+TYPE_MAP = {'scrypt': ScryptKeyStretching}

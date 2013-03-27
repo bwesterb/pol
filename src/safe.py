@@ -7,7 +7,7 @@ import binascii
 import multiprocessing
 
 import pol.elgamal
-import pol.kd
+import pol.ks
 import pol.hash
 
 import msgpack
@@ -41,11 +41,11 @@ class Safe(object):
 
     def __init__(self, data):
         self.data = data
-        if 'key-derivation' not in self.data:
-            raise SafeFormatError("Missing `key-derivation' attribute")
+        if 'key-stretching' not in self.data:
+            raise SafeFormatError("Missing `key-stretching' attribute")
         if 'hash' not in self.data:
             raise SafeFormatError("Missing `hash' attribute")
-        self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
+        self.ks = pol.ks.KeyStretching.setup(self.data['key-stretching'])
         self.hash = pol.hash.Hash.setup(self.data['hash'])
 
     def store(self, stream):
@@ -104,7 +104,7 @@ class ElGamalSafe(Safe):
         elif data['block-index-size'] == 4:
             self._block_index_struct = struct.Struct('>I')
     @staticmethod
-    def generate(n_blocks=1024, block_index_size=2, kd=None, _hash=None,
+    def generate(n_blocks=1024, block_index_size=2, ks=None, _hash=None,
                     gp_bits=1024, precomputed_gp=False,
                     nthreads=None, progress=None):
         """ Creates a new safe. """
@@ -113,8 +113,8 @@ class ElGamalSafe(Safe):
         else:
             gp = pol.elgamal.generate_group_params(bits=gp_bits,
                                     nthreads=nthreads, progress=progress)
-        if kd is None:
-            kd = pol.kd.KeyDerivation.setup()
+        if ks is None:
+            ks = pol.ks.KeyStretching.setup()
         if _hash is None:
             _hash = pol.hash.Hash.setup()
         safe = Safe(
@@ -122,7 +122,7 @@ class ElGamalSafe(Safe):
                  'n-blocks': n_blocks,
                  'block-index-size': block_index_size,
                  'group-params': [x.binary() for x in gp],
-                 'key-derivation': kd.params,
+                 'key-stretching': ks.params,
                  'hash': _hash.params,
                  'blocks': [[
                     # FIXME stub

@@ -2,6 +2,7 @@
 
 import logging
 
+import Crypto.Random
 import scrypt
 
 # FIXME There is a bug in scrypt 0.5.5 that causes a crash when we
@@ -22,10 +23,16 @@ class KeyStretching(object):
         self.params = params
 
     @staticmethod
-    def setup(params=None):
-        """ Set-up the key-stretching given by `params`. """
+    def setup(params=None, randfunc=None):
+        """ Set-up the key-stretching given by `params`.
+
+            If `params' is None, generates new parameters.  In that case
+            `randfunc' is used to generate a salt. """
         if params is None:
+            if randfunc is None:
+                randfunc = Crypto.Random.new().read
             params = {'type': 'scrypt',
+                      'salt': randfunc(32),
                       #'r': 8,
                       #'p': 1,
                       'Nexp': 15}
@@ -34,7 +41,7 @@ class KeyStretching(object):
             raise KeyStretchingParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
-    def derive(self, password, salt):
+    def derive(self, password):
         raise NotImplementedError
 
 class ScryptKeyStretching(KeyStretching):
@@ -50,14 +57,19 @@ class ScryptKeyStretching(KeyStretching):
                 raise KeyStretchingParameterError("%s should be int" % attr)
             if params[attr] < 0:
                 raise KeyStretchingParameterError("%s should be positive"% attr)
+        if not 'salt' in params or not isinstance(params['salt'], basestring):
+            raise KeyStretchingParameterError("Invalid param `salt'")
         #if params['r'] * params['p'] >= 2**30:
         #    raise KeyStretchingParameterError("r*p is too large")
         if params['Nexp'] <= 1:
             raise KeyStretchingParameterError("Nexp is too small")
 
-    def derive(self, password, salt):
+    def __call__(self, password):
+        return self.derive(password)
+
+    def derive(self, password):
         return scrypt.hash(password,
-                           salt,
+                           self.params['salt'],
                            #r=self.params['r'],
                            #p=self.params['p'],
                            N=2**self.params['Nexp'])

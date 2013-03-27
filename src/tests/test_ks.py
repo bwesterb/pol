@@ -17,7 +17,7 @@ class TestSCrypt(unittest.TestCase):
         ks = pol.ks.KeyStretching.setup({
                 'type': 'scrypt', 'Nexp': 15, 'salt': 'waasdasdaa'})
         self.assertEqual(binascii.hexlify(
-                ks.derive('waasdasdada')),
+                ks.stretch('waasdasdada')),
                             '69e9b3dafbc7cbe8d903fb1e6e1633da6c45fcd3f6e'+
                             'df66d34532a2883a7abd9390bbc834020a0539d8304'+
                             '570ee7b9eb64ab00ecad1bbd89e1a93c2c38646581')

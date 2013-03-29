@@ -1,8 +1,78 @@
 """ Extensions to Python's multiprocessing. """
 
 import time
+import Queue
 import threading
 import multiprocessing
+
+def parallel_map(func, seq, args=None, kwargs=None, chunk_size=1,
+                        nworkers=None, progress=None, progress_interval=0.1,
+                        initializer=None, use_threads=False):
+    """ Similar to map, but executes in parallel.
+
+            parallel_map(f, seq, args, kwargs)
+
+        gives the same result as
+
+            [f(x, *args, **kwargs) for x in seq]
+
+            `nworkers`  number of workers to spawn
+            `chunk_size`    number of elements to hand to a thread at the
+                        same time.
+            `progress`  a function to periodically call with the number of
+                        elements of seq already mapped
+            `progress_interval`     the approximate time interval to call
+                        the `progress` function
+            `initializer`           called in each worker process when spawn,
+                        with (args, kwargs) as arguments.  `initializer`
+                        may change args, kwargs.
+            `use_threads`   specifies to use threads instead of processes. """
+    def worker(c_func, c_args, c_kwargs, c_input, c_output, c_initializer):
+        if c_initializer is not None:
+            c_initializer(c_args, c_kwargs)
+        while True:
+            p = c_input.get()
+            if p is None:
+                break
+            i, xs = p
+            ys = []
+            for x in xs:
+                ys.append(c_func(x, *c_args, **c_kwargs))
+            c_output.put((i, ys))
+    if args is None:
+        args = ()
+    if kwargs is None:
+        kwargs = {}
+    if nworkers is None:
+        nworkers = multiprocessing.cpu_count()
+    p_input = multiprocessing.Queue()
+    p_output = multiprocessing.Queue()
+    processes = []
+    N = len(seq)
+    n = 0
+    ret = [None]*N
+    constr = threading.Thread if use_threads else multiprocessing.Process
+    for i in xrange(nworkers):
+        process = constr(target=worker, args=(func, args, kwargs, p_output,
+                                                p_input, initializer))
+        processes.append(process)
+        process.start()
+    # Add the elements to be mapped to the queue
+    for i in xrange(0, N, chunk_size):
+        p_output.put((i, seq[i:i+chunk_size]))
+    # and after that sentinels to signal the end
+    # of the queue, one for each worker
+    for i in xrange(nworkers):
+        p_output.put(None)
+    next_update = time.time() + progress_interval if progress else float('inf')
+    while n < N:
+        i, ys = p_input.get()
+        ret[i:i+len(ys)] = ys
+        n += len(ys)
+        if time.time() > next_update:
+            next_update = time.time() + progress_interval
+            progress(n)
+    return ret
 
 def parallel_try(func, args=None, kwargs=None, nworkers=None, progress=None,
                         progress_interval=0.1, update_interval=0.05,
@@ -62,8 +132,8 @@ def parallel_try(func, args=None, kwargs=None, nworkers=None, progress=None,
     p_counter = multiprocessing.RawValue('i', 0)
     p_input = multiprocessing.Queue()
     processes = []
+    constr = threading.Thread if use_threads else multiprocessing.Process
     for i in xrange(nworkers):
-        constr = threading.Thread if use_threads else multiprocessing.Process
         process = constr(target=worker, args=(func, args, kwargs, p_lock,
                                     p_done, p_input, p_counter, initializer))
         processes.append(process)

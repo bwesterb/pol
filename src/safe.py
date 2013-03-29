@@ -6,6 +6,7 @@ import logging
 import binascii
 import multiprocessing
 
+import pol.parallel
 import pol.elgamal
 import pol.ks
 import pol.kd
@@ -161,20 +162,28 @@ class ElGamalSafe(Safe):
         return pol.elgamal.group_parameters(
                     *[gmpy.mpz(x, 256) for x in self.data['group-params']])
     
-    def rerandomize(self, nworkers=None):
+    def rerandomize(self, nworkers=None, use_threads=False, progress=None):
         """ Rerandomizes blocks: they will still decrypt to the same
             plaintext. """
+        _progress = None
+        if progress is not None:
+            def _progress(n):
+                progress(float(n) / self.nblocks)
         if not nworkers:
             nworkers = multiprocessing.cpu_count()
         l.debug("Rerandomizing %s blocks on %s workers ...",
                     self.nblocks, nworkers)
-        pool = multiprocessing.Pool(nworkers, Crypto.Random.atfork)
         start_time = time.time()
         gp = self.group_params
-        self.data['blocks'] = pool.map(_eg_rerandomize_block,
-                    [(gp.g, gp.p, b) for b in self.data['blocks']])
+        self.data['blocks'] = pol.parallel.parallel_map(_eg_rerandomize_block,
+                        self.data['blocks'], args=(gp.g, gp.p),
+                        nworkers=nworkers, use_threads=use_threads,
+                        initializer=_eg_rerandomize_block_initializer,
+                        chunk_size=16, progress=_progress)
         secs = time.time() - start_time
         kbps = self.nblocks * gmpy.numdigits(gp.p,2) / 1024.0 / 8.0 / secs
+        if progress is not None:
+            progress(1.0)
         l.debug(" done in %.2fs; that is %.2f KB/s", secs, kbps)
 
     def _index_to_bytes(self, index):
@@ -187,10 +196,10 @@ class ElGamalSafe(Safe):
         return self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
                             length=self.bytes_per_block)
 
-def _eg_rerandomize_block(g_p_block):
-    """ Given [g, p, block], rerandomizes block using group
-        parameters g and p """
-    g, p, raw_b = g_p_block
+def _eg_rerandomize_block_initializer(args, kwargs):
+    Crypto.Random.atfork()
+def _eg_rerandomize_block(raw_b, g, p):
+    """ Rerandomizes raw_b given group parameters g and p. """
     s = random.randint(2, int(p))
     b = [gmpy.mpz(raw_b[0], 256),
          gmpy.mpz(raw_b[1], 256),

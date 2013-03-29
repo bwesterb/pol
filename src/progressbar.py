@@ -25,7 +25,7 @@ def coin(p, n):
     n95 = math.log(1 - 0.95, 1 - p)
     return prob_progress(n, n5, n50, n95, cp)
 
-class ProgressBar(object):
+class BaseProgressBar(object):
     """ Terminal progress bar accepting floats from the unit interval."""
     def __init__(self):
         raise NotImplementedError
@@ -41,7 +41,22 @@ class ProgressBar(object):
     def __exit__(self, type, value, traceback):
         self.end()
 
-class ProbablisticProgressBar(ProgressBar):
+class ProgressBar(BaseProgressBar):
+    def  __init__(self):
+        pass
+    def __call__(self, value):
+        width = 80 # TODO
+        f = int(value * (width - 2))
+        b = width - int(value * (width - 2)) - 2
+        sys.stdout.write('\033[1G')
+        sys.stdout.write('['+'='*f+' '*b+']')
+        sys.stdout.flush()
+    def start(self):
+        pass
+    def end(self):
+        print
+
+class ProbablisticProgressBar(BaseProgressBar):
     """ Terminal progress bar accepting prob_progress tuples """
     def __init__(self):
         pass
@@ -74,8 +89,12 @@ class ProbablisticProgressBar(ProgressBar):
         print
 
 if __name__ == '__main__':
+    import time
+    with ProgressBar() as p:
+        for i in xrange(100):
+            p(i/100.0)
+            time.sleep(0.01)
     with ProbablisticProgressBar() as p:
-        import time
-        for i in xrange(1000):
+        for i in xrange(100):
             p(coin(0.005, i))
-            time.sleep(0.1)
+            time.sleep(0.01)

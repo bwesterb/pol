@@ -46,8 +46,12 @@ class Safe(object):
             raise SafeFormatError("Missing `key-stretching' attribute")
         if 'key-derivation' not in self.data:
             raise SafeFormatError("Missing `key-derivation' attribute")
+        if 'block-cipher' not in self.data:
+            raise SafeFormatError("Missing `block-cipher' attribute")
         self.ks = pol.ks.KeyStretching.setup(self.data['key-stretching'])
         self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
+        self.cipher = pol.blockcipher.BlockCipher.setup(
+                            self.data['block-cipher'])
 
     def store(self, stream):
         start_time = time.time()
@@ -110,7 +114,7 @@ class ElGamalSafe(Safe):
                                   "`group-params' allow")
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, ks=None, kd=None,
-                    gp_bits=1025, precomputed_gp=False,
+                    blockcipher=None, gp_bits=1025, precomputed_gp=False,
                     nworkers=None, use_threads=False, progress=None):
         """ Creates a new safe. """
         if precomputed_gp:
@@ -123,6 +127,8 @@ class ElGamalSafe(Safe):
             ks = pol.ks.KeyStretching.setup()
         if kd is None:
             kd = pol.kd.KeyDerivation.setup()
+        if blockcipher is None:
+            cipher = pol.blockcipher.BlockCipher.setup()
         bytes_per_block = (gp_bits - 1) / 8
         safe = Safe(
                 {'type': 'elgamal',
@@ -132,6 +138,7 @@ class ElGamalSafe(Safe):
                  'group-params': [x.binary() for x in gp],
                  'key-stretching': ks.params,
                  'key-derivation': kd.params,
+                 'block-cipher': cipher.params,
                  'blocks': [[
                     # FIXME stub
                     gmpy.mpz(random.randint(2, int(gp.p))).binary(),

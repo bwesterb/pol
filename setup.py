@@ -18,6 +18,7 @@ setup(
         'msgpack-python>=0.2',  #      ibidem
         'gmpy>=1.15',           #      ibidem
         'scrypt>=0.5.5',        #      ibidem
+        'yappi>=0.62',          #      ibidem
         ],
     entry_points = {
         'console_scripts': [

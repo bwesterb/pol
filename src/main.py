@@ -24,6 +24,8 @@ class Program(object):
                     help='Path to safe')
         parser.add_argument('--verbose', '-v', action='count', dest='verbosity',
                     help='Add these to make pol chatty')
+        parser.add_argument('--profile', '-p', action='store_true',
+                    help='Profile performance of main process')
         subparsers = parser.add_subparsers(title='commands')
 
         p_init = subparsers.add_parser('init',
@@ -67,8 +69,18 @@ class Program(object):
             level = logging.WARNING
         logging.basicConfig(level=level)
 
+        # Profile?
+        if self.args.profile:
+            import yappi
+            yappi.start()
+
         # Execute command
-        return self.args.func()
+        ret = self.args.func()
+
+        if self.args.profile:
+            yappi.print_stats()
+
+        return ret
 
     def cmd_init(self):
         # TODO add sanity checks for rerand_bits and nthreads

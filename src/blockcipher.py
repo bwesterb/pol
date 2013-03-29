@@ -35,6 +35,11 @@ class BlockCipher(object):
             raise BlockCipherParameterError("Invalid `type' attribute")
         return TYPE_MAP[params['type']](params)
 
+    @property
+    def blocksize(self):
+        """ blocksize in bytes """
+        raise NotImplementedError
+
     def new_stream(self, iv):
         raise NotImplementedError
 
@@ -62,6 +67,10 @@ class AESBlockCipher(BlockCipher):
             raise ValueError("`iv' should be 16 bytes long")
         cipher = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CBC, iv)
         return _AESStream(cipher)
+
+    @property
+    def blocksize(self):
+        return 16
 
 
 TYPE_MAP = {'aes': AESBlockCipher}

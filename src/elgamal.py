@@ -83,15 +83,16 @@ def precomputed_group_params(bits=1025):
                 for x in PRECOMPUTED_GROUP_PARAMS[bits]]
     return group_parameters(p=p, g=g)
 
-def generate_group_params(bits=1025, nthreads=None, progress=None):
+def generate_group_params(bits=1025, nworkers=None, use_threads=False,
+                                progress=None):
     """ Generates group parameters for ElGamal. """
     # Find a safe prime as modulus.  This will take at least several
     # seconds on a single core.  Thus: we will parallelize.
     start_time = time.time()
-    if nthreads is None:
-        nthreads = multiprocessing.cpu_count()
-    l.debug('Searching for a %s bit safe prime p as modulus on %s threads',
-                bits, nthreads)
+    if nworkers is None:
+        nworkers = multiprocessing.cpu_count()
+    l.debug('Searching for a %s bit safe prime p as modulus on %s workers',
+                bits, nworkers)
     safe_prime_density = asymptotic_safe_prime_density / (bits - 1)
     if progress:
         progress('p', None)
@@ -101,7 +102,8 @@ def generate_group_params(bits=1025, nthreads=None, progress=None):
         _progress = None
     p = pol.parallel.parallel_try(_find_safe_prime, (bits,),
                             initializer=_find_safe_prime_initializer,
-                            progress=_progress, nthreads=nthreads)
+                            progress=_progress, nworkers=nworkers,
+                            use_threads=use_threads)
     # Find a safe `g` as generator.
     # Algorithm taken from Crypto.PublicKey.ElGamal.generate
     # TODO Should we use a generator of a subgroup for performance?

@@ -110,13 +110,14 @@ class ElGamalSafe(Safe):
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, ks=None, kd=None,
                     gp_bits=1025, precomputed_gp=False,
-                    nthreads=None, progress=None):
+                    nworkers=None, use_threads=False, progress=None):
         """ Creates a new safe. """
         if precomputed_gp:
             gp = pol.elgamal.precomputed_group_params(gp_bits)
         else:
             gp = pol.elgamal.generate_group_params(bits=gp_bits,
-                                    nthreads=nthreads, progress=progress)
+                    nworkers=nworkers, progress=progress,
+                    use_threads=use_threads)
         if ks is None:
             ks = pol.ks.KeyStretching.setup()
         if kd is None:
@@ -160,14 +161,14 @@ class ElGamalSafe(Safe):
         return pol.elgamal.group_parameters(
                     *[gmpy.mpz(x, 256) for x in self.data['group-params']])
     
-    def rerandomize(self, nthreads=None):
+    def rerandomize(self, nworkers=None):
         """ Rerandomizes blocks: they will still decrypt to the same
             plaintext. """
-        if not nthreads:
-            nthreads = multiprocessing.cpu_count()
-        l.debug("Rerandomizing %s blocks on %s threads ...",
-                    self.nblocks, nthreads)
-        pool = multiprocessing.Pool(nthreads, Crypto.Random.atfork)
+        if not nworkers:
+            nworkers = multiprocessing.cpu_count()
+        l.debug("Rerandomizing %s blocks on %s workers ...",
+                    self.nblocks, nworkers)
+        pool = multiprocessing.Pool(nworkers, Crypto.Random.atfork)
         start_time = time.time()
         gp = self.group_params
         self.data['blocks'] = pool.map(_eg_rerandomize_block,

@@ -17,8 +17,10 @@ import pol.progressbar
 class Program(object):
     def parse_args(self, argv):
         parser = argparse.ArgumentParser()
-        parser.add_argument('--threads', '-t', type=int, metavar='N',
-                    help='Number of worker threads')
+        parser.add_argument('--workers', '-w', type=int, metavar='N',
+                    help='Number of workers processes (/threads)')
+        parser.add_argument('--threads', '-t', action='store_true',
+                    help='Use worker threads instead of processes')
         parser.add_argument('--safe', '-s', type=str, default='~/.pol',
                             metavar='PATH',
                     help='Path to safe')
@@ -83,7 +85,7 @@ class Program(object):
         return ret
 
     def cmd_init(self):
-        # TODO add sanity checks for rerand_bits and nthreads
+        # TODO add sanity checks for rerand_bits and nworkers
         progressbar = pol.progressbar.ProbablisticProgressBar()
         def progress(step, x):
             if step == 'p' and x is None:
@@ -92,17 +94,18 @@ class Program(object):
                 progressbar(x)
             elif step == 'g':
                 progressbar.end()
-        safe = pol.safe.Safe.generate(nthreads=self.args.threads,
+        safe = pol.safe.Safe.generate(nworkers=self.args.workers,
                                       gp_bits=self.args.rerand_bits,
                                       progress=progress,
-                                      precomputed_gp=self.args.precomputed_gp)
+                                      precomputed_gp=self.args.precomputed_gp,
+                                      use_threads=self.args.threads)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     
     def cmd_touch(self):
         with open(os.path.expanduser(self.args.safe)) as f:
             safe = pol.safe.Safe.load(f)
-        safe.rerandomize(nthreads=self.args.threads)
+        safe.rerandomize(nworkers=self.args.workers)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
 

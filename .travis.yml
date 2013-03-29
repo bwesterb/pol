@@ -5,6 +5,7 @@ install:
  - "sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm"
  - "sudo apt-get install -qq libgmp-dev"
  - "git fetch --tags"
+ - "git describe"
  - "python setup.py install"
 script:
  - "python setup.py test"

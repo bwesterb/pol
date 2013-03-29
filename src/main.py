@@ -87,6 +87,7 @@ class Program(object):
     def cmd_init(self):
         # TODO add sanity checks for rerand_bits and nworkers
         progressbar = pol.progressbar.ProbablisticProgressBar()
+        progressbar.start()
         def progress(step, x):
             if step == 'p' and x is None:
                 progressbar.start()
@@ -105,7 +106,15 @@ class Program(object):
     def cmd_touch(self):
         with open(os.path.expanduser(self.args.safe)) as f:
             safe = pol.safe.Safe.load(f)
-        safe.rerandomize(nworkers=self.args.workers)
+        progressbar = pol.progressbar.ProgressBar()
+        progressbar.start()
+        def progress(v):
+            progressbar(v)
+            if v == 1.0:
+                progressbar.end()
+        safe.rerandomize(nworkers=self.args.workers,
+                         use_threads=self.args.threads,
+                         progress=progress)
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
 

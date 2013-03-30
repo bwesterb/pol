@@ -44,6 +44,11 @@ class KeyDerivation(object):
         """ Derives a key of `length' bytes from the list of strings `args'. """
         raise NotImplementedError
 
+    @property
+    def size(self):
+        """ The "natural" size of the key-derivation """
+        raise NotImplementedError
+
 class SHAKeyDerivation(KeyDerivation):
     """ SHA is the default key derivation """
 
@@ -84,5 +89,9 @@ class SHAKeyDerivation(KeyDerivation):
         for i in xrange(n):
             ret += self._derive(args + [self.word_struct.pack(i), self.salt])
         return ret[:length]
+
+    @property
+    def size(self):
+        return self.bits / 8
 
 TYPE_MAP = {'sha': SHAKeyDerivation}

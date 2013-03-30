@@ -122,3 +122,27 @@ def generate_group_params(bits=1025, nworkers=None, use_threads=False,
         break
     l.debug('Found one in %.2fs', time.time() - start_time)
     return group_parameters(p=p, g=g)
+
+def pubkey_from_privkey(privkey, gp):
+    return pow(gp.g, privkey, gp.p)
+def string_to_group(s):
+    # TODO is mpz(..., 256) stable?
+    return gmpy.mpz(s+'\0', 256)
+def group_to_string(n, size):
+    # TODO is mpz.binary() stable?
+    s = n.binary()[:size]
+    if len(s) != size:
+        s += s + '\0'*(size - len(s))
+    return s
+def decrypt(c1, c2, privkey, gp, size):
+    s = pow(c1, privkey, gp.p)
+    invs = gmpy.invert(s, gp.p)
+    return group_to_string((invs * c2) % gp.p, size)
+def encrypt(string, pubkey, gp, size, randfunc):
+    # TODO how small may size be?
+    number = string_to_group(string)
+    r = string_to_group(randfunc(size))
+    c1 = pow(gp.g, r, gp.p)
+    s = pow(pubkey, r, gp.p)
+    c2 = (number * s) % gp.p
+    return (c1, c2)

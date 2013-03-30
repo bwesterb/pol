@@ -100,6 +100,8 @@ class Program(object):
                                       progress=progress,
                                       precomputed_gp=self.args.precomputed_gp,
                                       use_threads=self.args.threads)
+        # TODO stub
+        safe._new_slice(safe.nblocks).trash()
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)
     

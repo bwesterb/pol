@@ -39,8 +39,12 @@ class BlockCipher(object):
     def blocksize(self):
         """ blocksize in bytes """
         raise NotImplementedError
+    @property
+    def keysize(self):
+        """ size of key in bytes """
+        raise NotImplementedError
 
-    def new_stream(self, iv):
+    def new_stream(self, key, iv):
         raise NotImplementedError
 
 class _AESStream(BaseStream):
@@ -71,6 +75,9 @@ class AESBlockCipher(BlockCipher):
     @property
     def blocksize(self):
         return 16
+    @property
+    def keysize(self):
+        return self.bits / 8
 
 
 TYPE_MAP = {'aes': AESBlockCipher}

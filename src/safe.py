@@ -100,10 +100,11 @@ class ElGamalSafe(Safe):
     """ Default implementation using rerandomization of ElGamal. """
 
     class Slice(object):
-        def __init__(self, safe, first_index, indices):
+        def __init__(self, safe, first_index, indices, value=None):
             self.safe = safe
             self.indices = indices
             self.first_index = first_index
+            self._value = value
         def trash(self, randfunc=None):
             """ Destroy contents of this slice by writing random values. """
             if randfunc is None:
@@ -119,6 +120,10 @@ class ElGamalSafe(Safe):
                                             - self.safe.block_index_size)
                         - 2*self.safe.cipher.blocksize - self.safe.slice_size)
 
+        @property
+        def value(self):
+            return self._value
+
         def store(self, key, value, randfunc=None, annex=False):
             """ Stores `value' in the slice """
             if randfunc is None:
@@ -128,8 +133,7 @@ class ElGamalSafe(Safe):
             total_size = self.size
             if len(value) > total_size:
                 raise ValueError("`value' too large")
-            raw = self.safe._slice_size_to_bytes(len(value)) + value
-            raw = raw.ljust(total_size, '\0')
+            raw = value.ljust(total_size, '\0')
             # Secondly, generate an IV, shuffle indices and get a cipherstream
             iv = randfunc(self.safe.cipher.blocksize)
             other_indices = list(self.indices)
@@ -138,14 +142,16 @@ class ElGamalSafe(Safe):
             cipher = self.safe._cipherstream(key, iv)
             # Thirdly, write the first block
             first_block_pt_size = (bpb - 2*self.safe.cipher.blocksize
-                                        - self.safe.block_index_size)
+                                        - self.safe.block_index_size
+                                        - self.safe.slice_size)
             if other_indices:
                 second_block = other_indices[0]
             else:
                 second_block = first_block
             first_block_ct = (self.safe.kd([self.safe._cipherstream_key(key)],
                                         length=self.safe.cipher.blocksize) + iv
-                                + cipher.encrypt(raw[:first_block_pt_size]
+                                + cipher.encrypt(self.safe._slice_size_to_bytes(
+                                        len(value))+raw[:first_block_pt_size]
                                 + self.safe._index_to_bytes(second_block)))
             self.safe._eg_encrypt_block(key, self.first_index, first_block_ct,
                                             randfunc, annex=annex)
@@ -159,8 +165,10 @@ class ElGamalSafe(Safe):
                     next_index = index
                 ct = cipher.encrypt(raw[offset:offset+ptsize] +
                                 self.safe._index_to_bytes(next_index))
+                offset += ptsize
                 self.safe._eg_encrypt_block(key, index, ct, randfunc,
                                                 annex=annex)
+            self._value = value
 
     def __init__(self, data):
         super(ElGamalSafe, self).__init__(data)
@@ -311,9 +319,8 @@ class ElGamalSafe(Safe):
         ret = ElGamalSafe.Slice(self, random.choice(indices), indices)
         return ret
 
-    def _find_slice(self, key):
-        """ Checks whether there is a slice opened by key in this safe """
-        gp = self.group_params
+    def _find_slices(self, key):
+        """ Find slices that are opened by base key `key' """
         symmkey_hash = self.kd([self._cipherstream_key(key)],
                             length=self.cipher.blocksize)
         for index in xrange(self.nblocks):
@@ -323,17 +330,47 @@ class ElGamalSafe(Safe):
                 continue
             # We got a block.  Is it the first block?
             if pt.startswith(symmkey_hash):
-                return index
-        return -1
+                yield self._load_slice_from_first_block(key, index, pt)
+
+    def _load_slice(self, key, index):
+        """ Loads the slice with first block `index' encrypted
+            with base key `key' """
+        fb = self._eg_decrypt_block(key, index)
+        symmkey_hash = self.kd([self._cipherstream_key(key)],
+                            length=self.cipher.blocksize)
+        if not fb.startswith(symmkey_hash):
+            raise WrongKeyError
+        return self._load_slice_from_first_block(key, index, fb)
+
+    def _load_slice_from_first_block(self, key, index, fbct):
+        # First, extract the IV and create a cipherstream
+        indices = [index]
+        iv = fbct[self.cipher.blocksize:self.cipher.blocksize*2]
+        cipherstream = self._cipherstream(key, iv)
+        # Now, read the first block
+        fbpt = cipherstream.decrypt(fbct[self.cipher.blocksize*2:])
+        size = self._slice_size_from_bytes(fbpt[:self.slice_size])
+        ret = fbpt[self.slice_size:-self.block_index_size]
+        current_index = index
+        next_index = self._index_from_bytes(fbpt[-self.block_index_size:])
+        # Finally, read the remaining blocks
+        while current_index != next_index:
+            current_index = next_index
+            indices.append(current_index)
+            ct = self._eg_decrypt_block(key, current_index)
+            pt = cipherstream.decrypt(ct)
+            ret += pt[:-self.block_index_size]
+            next_index = self._index_from_bytes(pt[-self.block_index_size:])
+        return ElGamalSafe.Slice(self, index, indices, ret[:size])
 
     def _index_to_bytes(self, index):
         return self._block_index_struct.pack(index)
     def _index_from_bytes(self, s):
-        self._block_index_struct.unpack(s)[0]
+        return self._block_index_struct.unpack(s)[0]
     def _slice_size_to_bytes(self, size):
         return self._slice_size_struct.pack(size)
     def _slice_size_from_bytes(self, s):
-        self._slice_size_struct.unpack(s)[0]
+        return self._slice_size_struct.unpack(s)[0]
 
     def _cipherstream_key(self, key):
         return self.kd([key, KD_SYMM], length=self.cipher.keysize)

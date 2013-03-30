@@ -32,12 +32,29 @@ class TestElgamalSafe(unittest.TestCase):
         self.assertRaises(ValueError, sl.store, 'key', '!'*(sl.size+1))
         sl.store('key', '!'*1)
         sl.store('key', '')
-    def test_find_slice(self):
+    def test_find_slices(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
-        sl = safe._new_slice(10)
+        sl1 = safe._new_slice(2)
+        sl2 = safe._new_slice(2)
+        sl3 = safe._new_slice(2)
+        sl1.store('key', '!!!!', annex=True)
+        sl2.store('key', '!!!!', annex=True)
+        sl3.store('key3', '!!!!', annex=True)
+        self.assertFalse(list(safe._find_slices('nokey')))
+        self.assertEqual(len(list(safe._find_slices('key'))), 2)
+    def test_load_slice(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
+        sl = safe._new_slice(5)
         sl.store('key', '!!!!', annex=True)
-        self.assertEqual(safe._find_slice('nokey'), -1)
-        self.assertEqual(safe._find_slice('key'), sl.first_index)
+        self.assertEqual(safe._load_slice('key', sl.first_index).value,
+                            '!!!!')
+        randfunc = Crypto.Random.new().read
+        sl.store('key', 'abcd'*(sl.size/4))
+        self.assertEqual(safe._load_slice('key', sl.first_index).value,
+                                'abcd'*(sl.size/4))
+        data = randfunc(sl.size)
+        sl.store('key', data)
+        self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
 
 if __name__ == '__main__':
     unittest.main()

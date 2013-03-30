@@ -130,10 +130,7 @@ def string_to_group(s):
     return gmpy.mpz(s+'\0', 256)
 def group_to_string(n, size):
     # TODO is mpz.binary() stable?
-    s = n.binary()[:size]
-    if len(s) != size:
-        s += s + '\0'*(size - len(s))
-    return s
+    return n.binary()[:size].ljust(size, '\0')
 def decrypt(c1, c2, privkey, gp, size):
     s = pow(c1, privkey, gp.p)
     invs = gmpy.invert(s, gp.p)

@@ -117,7 +117,7 @@ class ElGamalSafe(Safe):
             """ The amount of plaintext bytes this slice can store. """
             return (len(self.indices) * (self.safe.bytes_per_block
                                             - self.safe.block_index_size)
-                        - self.safe.cipher.blocksize - self.safe.slice_size)
+                        - 2*self.safe.cipher.blocksize - self.safe.slice_size)
 
         def store(self, key, value, randfunc=None, annex=False):
             """ Stores `value' in the slice """
@@ -133,17 +133,20 @@ class ElGamalSafe(Safe):
             # Secondly, generate an IV, shuffle indices and get a cipherstream
             iv = randfunc(self.safe.cipher.blocksize)
             other_indices = list(self.indices)
+            other_indices.remove(self.first_index)
             random.shuffle(other_indices)
             cipher = self.safe._cipherstream(key, iv)
             # Thirdly, write the first block
-            first_block_pt_size = (bpb - self.safe.cipher.blocksize
+            first_block_pt_size = (bpb - 2*self.safe.cipher.blocksize
                                         - self.safe.block_index_size)
             if other_indices:
                 second_block = other_indices[0]
             else:
                 second_block = first_block
-            first_block_ct = iv + cipher.encrypt(raw[:first_block_pt_size]
-                                + self.safe._index_to_bytes(second_block))
+            first_block_ct = (self.safe.kd([self.safe._cipherstream_key(key)],
+                                        length=self.safe.cipher.blocksize) + iv
+                                + cipher.encrypt(raw[:first_block_pt_size]
+                                + self.safe._index_to_bytes(second_block)))
             self.safe._eg_encrypt_block(key, self.first_index, first_block_ct,
                                             randfunc, annex=annex)
             offset = first_block_pt_size
@@ -308,6 +311,21 @@ class ElGamalSafe(Safe):
         ret = ElGamalSafe.Slice(self, random.choice(indices), indices)
         return ret
 
+    def _find_slice(self, key):
+        """ Checks whether there is a slice opened by key in this safe """
+        gp = self.group_params
+        symmkey_hash = self.kd([self._cipherstream_key(key)],
+                            length=self.cipher.blocksize)
+        for index in xrange(self.nblocks):
+            try:
+                pt = self._eg_decrypt_block(key, index)
+            except WrongKeyError:
+                continue
+            # We got a block.  Is it the first block?
+            if pt.startswith(symmkey_hash):
+                return index
+        return -1
+
     def _index_to_bytes(self, index):
         return self._block_index_struct.pack(index)
     def _index_from_bytes(self, s):
@@ -317,10 +335,11 @@ class ElGamalSafe(Safe):
     def _slice_size_from_bytes(self, s):
         self._slice_size_struct.unpack(s)[0]
 
+    def _cipherstream_key(self, key):
+        return self.kd([key, KD_SYMM], length=self.cipher.keysize)
     def _cipherstream(self, key, iv):
         """ Returns a blockcipher stream for key `key' """
-        return self.cipher.new_stream(
-                self.kd([key, KD_SYMM], length=self.cipher.keysize), iv)
+        return self.cipher.new_stream(self._cipherstream_key(key), iv)
     def _privkey_for_block(self, key, index):
         """ Returns the elgamal private key for the block `index' """
         # TODO we should not assume how mpz.binary() works
@@ -352,6 +371,7 @@ class ElGamalSafe(Safe):
     def _eg_encrypt_block(self, key, index, s, randfunc, annex=False):
         """ Sets the El-Gamal encrypted content of block `index' to `s'
             using key `key' """
+        assert len(s) <= self.bytes_per_block
         # TODO is there a cheaper way to check whether this block belongs
         #      to this key?
         privkey = self._privkey_for_block(key, index)

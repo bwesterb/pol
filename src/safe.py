@@ -357,8 +357,11 @@ class ElGamalSafe(Safe):
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
         pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
-        if not annex and self.data['blocks'][index][2] != pubkey.binary():
-            raise WrongKeyError
+        binary_pubkey = pubkey.binary()
+        if self.data['blocks'][index][2] != binary_pubkey:
+            if not annex:
+                raise WrongKeyError
+            self.data['blocks'][index][2] = binary_pubkey
         # TODO is it safe to pick r so much smaller than p?
         c1, c2 = pol.elgamal.encrypt(s, pubkey, gp,
                                      self.bytes_per_block, randfunc)

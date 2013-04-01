@@ -54,7 +54,8 @@ class ProgressBar(BaseProgressBar):
     def start(self):
         pass
     def end(self):
-        print
+        sys.stdout.write('\033[1G\n')
+        sys.stdout.flush()
 
 class ProbablisticProgressBar(BaseProgressBar):
     """ Terminal progress bar accepting prob_progress tuples """
@@ -85,8 +86,8 @@ class ProbablisticProgressBar(BaseProgressBar):
     def start(self):
         self.start_time = time.time()
     def end(self):
-        print
-        print
+        sys.stdout.write('\033[1G\n\n')
+        sys.stdout.flush()
 
 if __name__ == '__main__':
     import time

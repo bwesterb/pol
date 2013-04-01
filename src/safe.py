@@ -132,6 +132,7 @@ APPEND_SLICE_MAGIC = binascii.unhexlify('2d5039ba')
 # constants. For instance, given a base key K, the ElGamal private
 # key for of the n-th block is KeyDerivation(K, KD_ELGAMAL, n)
 KD_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KD_MARKER  = binascii.unhexlify('7884002aaa175df1b13724aa2b58682a')
 KD_SYMM    = binascii.unhexlify('4110252b740b03c53b1c11d6373743fb')
 KD_LIST    = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
 KD_APPEND  = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
@@ -352,7 +353,7 @@ class ElGamalSafe(Safe):
                  'key-stretching': ks.params,
                  'key-derivation': kd.params,
                  'block-cipher': cipher.params,
-                 'blocks': [['','',''] for i in xrange(n_blocks)]})
+                 'blocks': [['','','',''] for i in xrange(n_blocks)]})
         # Mark all blocks as free
         safe.mark_free(xrange(n_blocks))
         return safe
@@ -614,26 +615,26 @@ class ElGamalSafe(Safe):
     def _cipherstream(self, key, iv):
         """ Returns a blockcipher stream for key `key' """
         return self.cipher.new_stream(self._cipherstream_key(key), iv)
+    def _marker_for_block(self, key, index):
+        """ Returns the key used to mark a block at `index' as owned
+            by `key' """
+        # TODO make this faster with a secure RNG?
+        return self.kd([key, KD_MARKER, self._index_to_bytes(index)])
     def _privkey_for_block(self, key, index):
         """ Returns the elgamal private key for the block `index' """
         # TODO we should not assume how mpz.binary() works
         # TODO is it safe to reduce the size of privkey by this much?
         return gmpy.mpz(self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
                             length=self.bytes_per_block) + '\0', 256)
-    def _annex_block(self, key, index):
-        """ Changes the public key of the block `index' to the one derived from
-            base key `key'. """
-        self.data['blocks'][index][2] = pol.elgamal.pubkey_from_privkey(
-                self._privkey_for_block(key, index), self.group_params).binary()
 
     # ElGamal encryption and decryption
     def _eg_decrypt_block(self, key, index):
         """ Decrypts the block `index' with `key' """
+        marker = self._marker_for_block(key, index)
+        if self.data['blocks'][index][3] != marker:
+            raise WrongKeyError
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
-        pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
-        if self.data['blocks'][index][2] != pubkey.binary():
-            raise WrongKeyError
         c1 = gmpy.mpz(self.data['blocks'][index][0], 256)
         c2 = gmpy.mpz(self.data['blocks'][index][1], 256)
         return pol.elgamal.decrypt(c1, c2, privkey, gp, self.bytes_per_block)
@@ -641,16 +642,18 @@ class ElGamalSafe(Safe):
         """ Sets the El-Gamal encrypted content of block `index' to `s'
             using key `key' """
         assert len(s) <= self.bytes_per_block
-        # TODO is there a cheaper way to check whether this block belongs
-        #      to this key?
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
-        pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
-        binary_pubkey = pubkey.binary()
-        if self.data['blocks'][index][2] != binary_pubkey:
+        marker = self._marker_for_block(key, index)
+        if self.data['blocks'][index][3] != marker:
             if not annex:
                 raise WrongKeyError
+            pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
+            binary_pubkey = pubkey.binary()
             self.data['blocks'][index][2] = binary_pubkey
+            self.data['blocks'][index][3] = marker
+        else:
+            pubkey = gmpy.mpz(self.data['blocks'][index][2], 256)
         # TODO is it safe to pick r so much smaller than p?
         c1, c2 = pol.elgamal.encrypt(s, pubkey, gp,
                                      self.bytes_per_block, randfunc)

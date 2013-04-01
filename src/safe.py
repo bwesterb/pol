@@ -236,6 +236,9 @@ class ElGamalSafe(Safe):
             total_size = self.size
             if len(value) > total_size:
                 raise ValueError("`value' too large")
+            l.debug('Slice.store: storing @%s; %s blocks; %s/%sB',
+                    self.first_index, len(self.indices), len(value),
+                    total_size)
             raw = value.ljust(total_size, '\0')
             # Secondly, generate an IV, shuffle indices and get a cipherstream
             iv = randfunc(self.safe.cipher.blocksize)
@@ -356,14 +359,16 @@ class ElGamalSafe(Safe):
 
     def open_containers(self, password):
         """ Opens a container. """
-        l.debug('open_container: Stretching key')
+        l.debug('open_containers: Stretching key')
         access_key = self.ks(password)
-        l.debug('open_container: Searching for access slice')
+        l.debug('open_containers: Searching for access slice ...')
         for sl in self._find_slices(access_key):
             access_data = access_tuple(*msgpack.loads(sl.value))
             if access_data.magic != AS_MAGIC:
                 l.warn('Wrong magic on access slice')
                 continue
+            l.debug('open_containers:  found one @%s; type %s',
+                            sl.first_index, access_data.type)
             yield self._open_container_with_access_data(access_data)
 
     def _open_container_with_access_data(self, access_data):
@@ -574,6 +579,7 @@ class ElGamalSafe(Safe):
 
     def _load_slice_from_first_block(self, key, index, fbct):
         # First, extract the IV and create a cipherstream
+        l.debug('_load_slice_from_first_block: @%s', index)
         indices = [index]
         iv = fbct[self.cipher.blocksize:self.cipher.blocksize*2]
         cipherstream = self._cipherstream(key, iv)
@@ -591,6 +597,7 @@ class ElGamalSafe(Safe):
             pt = cipherstream.decrypt(ct)
             ret += pt[:-self.block_index_size]
             next_index = self._index_from_bytes(pt[-self.block_index_size:])
+        l.debug('_load_slice_from_first_block:   %s blocks', len(indices))
         return ElGamalSafe.Slice(self, index, indices, ret[:size])
 
     def _index_to_bytes(self, index):

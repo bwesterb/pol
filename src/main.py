@@ -56,6 +56,12 @@ class Program(object):
         p_generate.add_argument('--note', '-n')
         p_generate.set_defaults(func=self.cmd_generate)
 
+        p_paste = subparsers.add_parser('paste',
+                    help='Stores a secret from the clipboard')
+        p_paste.add_argument('key')
+        p_paste.add_argument('--note', '-n')
+        p_paste.set_defaults(func=self.cmd_paste)
+
         p_copy = subparsers.add_parser('copy',
                     help='Copies a password to the clipboard')
         p_copy.add_argument('key')
@@ -78,13 +84,16 @@ class Program(object):
         self.parse_args(argv)
 
         # Set up logging
+        extra_logging_config = {}
         if self.args.verbosity >= 2:
             level = logging.DEBUG
+            extra_logging_config['format'] = ('%(relativeCreated)d '+
+                    '%(levelname)s %(name)s %(message)s')
         elif self.args.verbosity == 1:
             level = logging.INFO
         else:
             level = logging.WARNING
-        logging.basicConfig(level=level)
+        logging.basicConfig(level=level, **extra_logging_config)
 
         # Profile?
         if self.args.profile:
@@ -178,6 +187,36 @@ class Program(object):
             pol.clipboard.copy(entry[2])
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()
+    def cmd_paste(self):
+        pw = pol.clipboard.paste()
+        if not pw:
+            print 'Clipboard is empty'
+            return -3
+        with open(os.path.expanduser(self.args.safe)) as f:
+            safe = pol.safe.Safe.load(f)
+        found_one = False
+        stored = False
+        for container in safe.open_containers(
+                getpass.getpass('Enter (append-)password: ')):
+            if not found_one:
+                found_one = True
+            try:
+                container.add(self.args.key, self.args.note, pw)
+                container.save()
+                stored = True
+            except pol.safe.MissingKey:
+                pass
+        if not found_one:
+            print 'The password did not open any container.'
+            return -1
+        if found_one and not stored:
+            print 'No append access to the containers opened by this password'
+            return -2
+        pol.clipboard.clear()
+        self._rerandomize(safe)
+        with open(os.path.expanduser(self.args.safe), 'w') as f:
+            safe.store(f)
+
     def cmd_generate(self):
         with open(os.path.expanduser(self.args.safe)) as f:
             safe = pol.safe.Safe.load(f)

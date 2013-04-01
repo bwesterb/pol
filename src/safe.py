@@ -620,11 +620,6 @@ class ElGamalSafe(Safe):
         # TODO is it safe to reduce the size of privkey by this much?
         return gmpy.mpz(self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
                             length=self.bytes_per_block) + '\0', 256)
-    def _check_key_for_block(self, key, index):
-        """ Checks whether `key' decrypts the block `index' """
-        pubkey = gmpy.mpz(self.data['blocks'][index][2])
-        privkey = self._privkey_for_block(key, index)
-        gp = self.group_params
     def _annex_block(self, key, index):
         """ Changes the public key of the block `index' to the one derived from
             base key `key'. """

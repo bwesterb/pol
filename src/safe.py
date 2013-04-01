@@ -4,6 +4,7 @@ import time
 import struct
 import logging
 import binascii
+import collections
 import multiprocessing
 
 import pol.blockcipher
@@ -22,19 +23,8 @@ import Crypto.Random.random as random
 
 l = logging.getLogger(__name__)
 
-# Constants used for access slices
-AS_MAGIC = binascii.unhexlify('1a1a8ad7')  # starting bytes of an access slice
-AS_FULL = 0         # the access slice gives full access
-AS_LIST = 1         # the access slice gives list-only access
-AS_APPEND = 2       # the access slice gives append-only access
-
-# We derive multiple keys from one base key using hashing and
-# constants. For instance, given a base key K, the ElGamal private
-# key for of the n-th block is KeyDerivation(K, KD_ELGAMAL, n)
-KD_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KD_SYMM    = binascii.unhexlify('4110252b740b03c53b1c11d6373743fb')
-KD_LIST    = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KD_APPEND  = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
+class MissingKey(ValueError):
+    pass
 
 class WrongKeyError(ValueError):
     pass
@@ -63,16 +53,16 @@ class Safe(object):
 
     def store(self, stream):
         start_time = time.time()
-        l.info('Packing ...')
+        l.debug('Packing ...')
         msgpack.pack(self.data, stream)
-        l.info(' packed in %.2fs', time.time() - start_time)
+        l.debug(' packed in %.2fs', time.time() - start_time)
 
     @staticmethod
     def load(stream):
         start_time = time.time()
-        l.info('Unpacking ...')
+        l.debug('Unpacking ...')
         data = msgpack.unpack(stream, use_list=True)
-        l.info(' unpacked in %.2fs', time.time() - start_time)
+        l.debug(' unpacked in %.2fs', time.time() - start_time)
         if ('type' not in data or not isinstance(data['type'], basestring)
                 or data['type'] not in TYPE_MAP):
             raise SafeFormatError("Invalid `type' attribute")
@@ -88,7 +78,7 @@ class Safe(object):
         """ Create a new container. """
         raise NotImplementedError
 
-    def open_container(self, password):
+    def open_containers(self, password):
         """ Opens a container. """
         raise NotImplementedError
 
@@ -96,8 +86,121 @@ class Safe(object):
         """ Rerandomizes the safe. """
         raise NotImplementedError
 
+    def trash_freespace(self):
+        """ Writes random data to the free space """
+        raise NotImplementedError
+
+class Container(object):
+    """ Containers store secrets. """
+    def list(self):
+        """ returns a list of all keys of all entries in this container """
+        raise NotImplementedError
+    def add(self, key, note, secret):
+        """ adds a new entry (key, note, secret) """
+        raise NotImplementedError
+    def get(self, key):
+        """ Returns (note, secret) for the entry with key `key' """
+        raise NotImplementedError
+    def save(self):
+        """ Saves the changes made to the container to the safe. """
+        raise NotImplementedError
+    @property
+    def id(self):
+        """ An identifier for the container. """
+        raise NotImplementedError
+
+# Types used by ElGamalSafe
+access_tuple = collections.namedtuple('access_tuple',
+                        ('magic', 'type', 'key', 'index'))
+append_tuple = collections.namedtuple('append_tuple',
+                        ('magic', 'pubkey', 'entries'))
+main_tuple = collections.namedtuple('main_tuple',
+                        ('magic', 'append_index', 'entries', 'iv', 'secrets'))
+secret_tuple = collections.namedtuple('secret_tuple',
+                        ('privkey', 'entries'))
+
+# Constants used for access slices
+AS_MAGIC = binascii.unhexlify('1a1a8ad7')  # starting bytes of an access slice
+AS_FULL = 0         # the access slice gives full access
+AS_LIST = 1         # the access slice gives list-only access
+AS_APPEND = 2       # the access slice gives append-only access
+
+MAIN_SLICE_MAGIC = binascii.unhexlify('33653efc')
+APPEND_SLICE_MAGIC = binascii.unhexlify('2d5039ba')
+
+# We derive multiple keys from one base key using hashing and
+# constants. For instance, given a base key K, the ElGamal private
+# key for of the n-th block is KeyDerivation(K, KD_ELGAMAL, n)
+KD_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KD_SYMM    = binascii.unhexlify('4110252b740b03c53b1c11d6373743fb')
+KD_LIST    = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
+KD_APPEND  = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
+
+
 class ElGamalSafe(Safe):
     """ Default implementation using rerandomization of ElGamal. """
+
+    class Container(Container):
+        def __init__(self, safe, full_key, list_key, append_key, main_slice,
+                        append_slice, main_data, append_data, secret_data):
+            self.safe = safe
+            self.full_key = full_key
+            self.list_key = list_key
+            self.append_key = append_key
+            self.main_slice = main_slice
+            self.append_slice = append_slice
+            self.main_data = main_data
+            self.append_data = append_data
+            self.secret_data = secret_data
+        def save(self, randfunc=None, annex=False):
+            if randfunc is None:
+                randfunc = Crypto.Random.new().read
+            # Update secrets ciphertext
+            if self.secret_data:
+                assert self.full_key and self.main_data
+                sbs = self.safe.cipher.blocksize
+                iv = randfunc(sbs)
+                cipherstream = self.safe._cipherstream(self.full_key, iv)
+                secrets_pt = msgpack.dumps(self.secret_data)
+                if len(secrets_pt) % sbs != 0:
+                    padding = sbs - (len(secrets_pt) % sbs)
+                    secrets_pt += '\0'*padding
+                secrets_ct = cipherstream.encrypt(secrets_pt)
+                self.main_data = self.main_data._replace(iv=iv,
+                                        secrets=secrets_ct)
+            # Write main slice
+            if self.main_data:
+                assert self.list_key and self.main_slice
+                main_pt = msgpack.dumps(self.main_data)
+                self.main_slice.store(self.list_key, main_pt, annex=annex)
+            # Write append slice
+            if self.append_data:
+                assert self.append_key and self.append_slice
+                append_pt = msgpack.dumps(self.append_data)
+                self.append_slice.store(self.append_key, append_pt, annex=annex)
+        def list(self):
+            if self.main_data:
+                return self.main_data.entries
+            raise MissingKey
+        def get(self, key):
+            if self.main_data:
+                for i, entry in enumerate(self.main_data.entries):
+                    if entry[0] != key:
+                        continue
+                    if self.secret_data:
+                        yield (entry[0], entry[1], self.secret_data.entries[i])
+                    else:
+                        yield (entry[0], entry[1])
+            raise MissingKey
+        def add(self, key, note, secret):
+            # TODO implement append without full access
+            if not self.secret_data:
+                raise MissingKey
+            self.main_data.entries.append((key, note))
+            self.secret_data.entries.append(secret)
+        @property
+        def id(self):
+            return self.append_slice.first_index
 
     class Slice(object):
         def __init__(self, safe, first_index, indices, value=None):
@@ -147,7 +250,7 @@ class ElGamalSafe(Safe):
             if other_indices:
                 second_block = other_indices[0]
             else:
-                second_block = first_block
+                second_block = self.first_index
             first_block_ct = (self.safe.kd([self.safe._cipherstream_key(key)],
                                         length=self.safe.cipher.blocksize) + iv
                                 + cipher.encrypt(self.safe._slice_size_to_bytes(
@@ -251,6 +354,126 @@ class ElGamalSafe(Safe):
         safe.mark_free(xrange(n_blocks))
         return safe
 
+    def open_containers(self, password):
+        """ Opens a container. """
+        l.debug('open_container: Stretching key')
+        access_key = self.ks(password)
+        l.debug('open_container: Searching for access slice')
+        for sl in self._find_slices(access_key):
+            access_data = access_tuple(*msgpack.loads(sl.value))
+            if access_data.magic != AS_MAGIC:
+                l.warn('Wrong magic on access slice')
+                continue
+            yield self._open_container_with_access_data(access_data)
+
+    def _open_container_with_access_data(self, access_data):
+        (full_key, list_key, append_key, main_slice, append_slice, main_data,
+                append_data, secret_data, append_index, main_index) = (None,
+                        None, None, None, None, None, None, None, None, None)
+        if access_data.type == AS_APPEND:
+            append_key = access_data.key
+            append_index = access_data.index
+        elif access_data.type == AS_LIST:
+            list_key = access_data.key
+            main_index = access_data.index
+        elif access_data.type == AS_FULL:
+            full_key = access_data.key
+            main_index = access_data.index
+        else:
+            raise SafeFormatError("Unknown slice type `%s'"
+                                        % repr(access_data.type))
+        if full_key:
+            list_key = self.kd([full_key, KD_LIST])
+        if list_key:
+            main_slice = self._load_slice(list_key, main_index)
+            main_data = main_tuple(*msgpack.loads(main_slice.value))
+            append_key = self.kd([list_key, KD_APPEND])
+            append_index = main_data.append_index
+        if full_key:
+            cipherstream = self._cipherstream(full_key, main_data.iv)
+            secret_data = secret_tuple(*_msgpack_loads_padded(
+                            cipherstream.decrypt(main_data.secrets)))
+        if append_index:
+            append_slice = self._load_slice(append_key, append_index)
+            append_data = append_tuple(*msgpack.loads(append_slice.value))
+        return ElGamalSafe.Container(self, full_key, list_key, append_key,
+                    main_slice, append_slice, main_data, append_data,
+                    secret_data)
+
+    def new_container(self, password, list_password=None, append_password=None,
+                                nblocks=170, randfunc=None):
+        """ Create a new container. """
+        # TODO support access blocks of more than one block in size.
+        # TODO check append_slice_size makes sense
+        append_slice_size = 5
+        if randfunc is None:
+            randfunc = Crypto.Random.new().read
+        if len(self.free_blocks) < nblocks:
+            raise SafeFullError
+        # Divide blocks
+        nblocks_mainslice = nblocks - 1
+        if list_password:
+            nblocks_mainslice -= 1
+        if append_password:
+            nblocks_mainslice -= 1 - append_slice_size
+        # Create slices
+        main_slice = self._new_slice(nblocks_mainslice)
+        as_full = self._new_slice(1)
+        if append_password:
+            append_slice = self._new_slice(append_slice_size)
+            as_append = self._new_slice(1)
+        if list_password:
+            as_list = self._new_slice(1)
+        # Generate the keys of the container
+        l.debug('new_container: deriving keys')
+        full_key = randfunc(self.kd.size)
+        list_key = self.kd([full_key, KD_LIST])
+        append_key = self.kd([list_key, KD_APPEND])
+        # Derive keys from passwords
+        as_full_key = self.ks(password)
+        if append_password:
+            as_append_key = self.ks(append_password)
+        if list_password:
+            as_list_key = self.ks(list_password)
+        # Create access slices
+        l.debug('new_container: creating access slices')
+        as_full.store(as_full_key, msgpack.dumps(
+                    access_tuple(magic=AS_MAGIC,
+                                 type=AS_FULL,
+                                 index=main_slice.first_index,
+                                 key=full_key)), annex=True)
+        if append_password:
+            as_append.store(as_append_key, msgpack.dumps(
+                    access_tuple(magic=AS_MAGIC,
+                                 type=AS_APPEND,
+                                 index=append_slice.first_index,
+                                 key=append_key)), annex=True)
+        if list_password:
+            as_list.store(as_list_key, msgpack.dumps(
+                    access_tuple(magic=AS_MAGIC,
+                                 type=AS_LIST,
+                                 index=main_slice.first_index,
+                                 key=list_key)), annex=True)
+        # Initialize main and append slices
+        if append_password:
+            append_data = append_tuple(magic=APPEND_SLICE_MAGIC,
+                                 pubkey=None, # TODO
+                                 entries=[])
+        main_data = main_tuple(magic=MAIN_SLICE_MAGIC,
+                               append_index=(append_slice.first_index
+                                                if append_password else None),
+                               entries=[],
+                               iv=None,
+                               secrets=None)
+        secret_data = secret_tuple(privkey=None, # TODO
+                                   entries=[])
+        container =  ElGamalSafe.Container(self, full_key, list_key, append_key,
+                        main_slice, append_slice, main_data, append_data,
+                        secret_data)
+        l.debug('new_container: saving')
+        container.save(randfunc=randfunc, annex=True)
+        return container
+
     @property
     def nblocks(self):
         """ Number of blocks. """
@@ -281,6 +504,13 @@ class ElGamalSafe(Safe):
     def mark_free(self, indices):
         """ Marks the given indices as free. """
         self.free_blocks.update(indices)
+
+    def trash_freespace(self):
+        if not self.free_blocks:
+            return
+        l.debug('trash_freespace: trashing')
+        sl = self._new_slice(len(self.free_blocks))
+        sl.trash()
 
     def rerandomize(self, nworkers=None, use_threads=False, progress=None):
         """ Rerandomizes blocks: they will still decrypt to the same
@@ -438,5 +668,12 @@ def _eg_rerandomize_block(raw_b, g, p):
     raw_b[0] = b[0].binary()
     raw_b[1] = b[1].binary()
     return raw_b
+
+def _msgpack_loads_padded(s):
+    """ The same as msgpack.loads, but does not raise an exception if
+        unread data remains. """
+    unpacker = msgpack.Unpacker()
+    unpacker.feed(s)
+    return unpacker.unpack()
 
 TYPE_MAP = {'elgamal': ElGamalSafe}

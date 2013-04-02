@@ -129,9 +129,9 @@ class Program(object):
                 print "  Leave blank if you do not want a second container."
                 print
             if first:
-                masterpw = getpass.getpass('  Enter master-password: ')
+                masterpw = getpass.getpass('    Enter master-password: ')
             else:
-                masterpw = getpass.getpass('  Enter master-password [stop]: ')
+                masterpw = getpass.getpass('    Enter master-password [stop]: ')
                 if not masterpw:
                     break
             if first:
@@ -140,14 +140,14 @@ class Program(object):
                 print "  list and add entries.  You cannot see the secrets of the existing"
                 print "  entries.  Leave blank if you do not want a list-password."
                 print
-            listpw = getpass.getpass('  Enter list-password [no list-password]: ')
+            listpw = getpass.getpass('    Enter list-password [no list-password]: ')
             if first:
                 print
                 print "  A container can have an append-password.  With this password you"
                 print "  can only add entries.  You cannot see the existing entries."
                 print "  Leave blank if you do not want an append-passowrd."
                 print
-            appendpw = getpass.getpass('  Enter append-password [no append-password]: ')
+            appendpw = getpass.getpass('    Enter append-password [no append-password]: ')
             if second:
                 second = False
             if first:
@@ -156,7 +156,9 @@ class Program(object):
             pws.append((masterpw if masterpw else None,
                         listpw if listpw else None,
                         appendpw if appendpw else None))
-        print 'Generating group parameters for this safe. This can take a while ...'
+        print
+        if not self.args.precomputed_gp:
+            print 'Generating group parameters for this safe. This can take a while ...'
         # TODO add sanity checks for rerand_bits and nworkers
         # TODO generate group parameters in parallel
         progressbar = pol.progressbar.ProbablisticProgressBar()

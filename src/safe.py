@@ -201,7 +201,8 @@ class ElGamalSafe(Safe):
             self.secret_data.entries.append(secret)
         @property
         def id(self):
-            return self.append_slice.first_index
+            return (self.append_slice.first_index if self.append_slice else
+                            self.main_slice.first_index)
 
     class Slice(object):
         def __init__(self, safe, first_index, indices, value=None):
@@ -412,6 +413,7 @@ class ElGamalSafe(Safe):
         # TODO support access blocks of more than one block in size.
         # TODO check append_slice_size makes sense
         append_slice_size = 5
+        append_slice, append_data = None, None
         if randfunc is None:
             randfunc = Crypto.Random.new().read
         if len(self.free_blocks) < nblocks:
@@ -425,8 +427,9 @@ class ElGamalSafe(Safe):
         # Create slices
         main_slice = self._new_slice(nblocks_mainslice)
         as_full = self._new_slice(1)
-        if append_password:
+        if append_password or list_password:
             append_slice = self._new_slice(append_slice_size)
+        if append_password:
             as_append = self._new_slice(1)
         if list_password:
             as_list = self._new_slice(1)
@@ -461,13 +464,13 @@ class ElGamalSafe(Safe):
                                  index=main_slice.first_index,
                                  key=list_key)), annex=True)
         # Initialize main and append slices
-        if append_password:
+        if append_slice:
             append_data = append_tuple(magic=APPEND_SLICE_MAGIC,
                                  pubkey=None, # TODO
                                  entries=[])
         main_data = main_tuple(magic=MAIN_SLICE_MAGIC,
                                append_index=(append_slice.first_index
-                                                if append_password else None),
+                                                if append_slice else None),
                                entries=[],
                                iv=None,
                                secrets=None)

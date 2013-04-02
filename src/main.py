@@ -210,7 +210,8 @@ class Program(object):
                 found_one = True
             try:
                 for entry in container.get(self.args.key):
-                    entries.append((container, entry))
+                    if len(entry) == 3:
+                        entries.append((container, entry))
             except pol.safe.MissingKey:
                 continue
             except KeyError:

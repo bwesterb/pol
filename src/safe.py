@@ -423,7 +423,7 @@ class ElGamalSafe(Safe):
         if list_password:
             nblocks_mainslice -= 1
         if append_password:
-            nblocks_mainslice -= 1 - append_slice_size
+            nblocks_mainslice -= 1 + append_slice_size
         # Create slices
         main_slice = self._new_slice(nblocks_mainslice)
         as_full = self._new_slice(1)

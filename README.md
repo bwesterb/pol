@@ -9,21 +9,17 @@ pol /pɵl/ is a password manager with two important features:
       
       ```
       $ pol generate github -n "my username is John Doo"
-      Enter (append-)password [ default container ]:
-      Copied generated password to clipboard.  Press any key to clear clipboard ...
+      Enter (append-)password: 
+      Copied password to clipboard.  Press any key to clear ...
       ```
       
       Want to use the password?
       
       ```
       $ pol copy github
-        Enter password:
-      
-        Found 'github':
-      
-           my username is John Doo
-      
-        Copied secret to clipboard.  Press any key to clear clipboard ...
+      Enter password: 
+       note: 'my username is John Doo'
+      Copied secret to clipboard.  Press any key to clear ...
       ```
       
    2. Hidden containers.  You can have multiple containers with different

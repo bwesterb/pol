@@ -36,8 +36,6 @@ class Program(object):
 
         p_init = subparsers.add_parser('init',
                     help='Create a new safe')
-        p_init.add_argument('--ncontainers', '-n', type=int, default=1,
-                    help='Initial number of containers')
         p_init.add_argument('--rerand-bits', '-R', type=int, default=1025,
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
@@ -109,7 +107,58 @@ class Program(object):
         return ret
 
     def cmd_init(self):
+        # TODO do not override existing safe
+        print "You are about to create a new safe.  A can have up to six"
+        print "separate containers to store your secrets.  A container is"
+        print "accessed by one of its passwords.  Without one of its passwords,"
+        print "you cannot prove the existence of a container."
+        print
+        first = True
+        second = False
+        pws = []
+        for i in xrange(1, 7):
+            if not first:
+                print
+            print 'Container #%s' % i
+            if first:
+                print "  Each container must have a master-password.  This password gives"
+                print "  full access to the container."
+                print
+            if second:
+                print "  Now enter the passwords for the second container."
+                print "  Leave blank if you do not want a second container."
+                print
+            if first:
+                masterpw = getpass.getpass('  Enter master-password: ')
+            else:
+                masterpw = getpass.getpass('  Enter master-password [stop]: ')
+                if not masterpw:
+                    break
+            if first:
+                print
+                print "  A container can have a list-password.  With this password you can"
+                print "  list and add entries.  You cannot see the secrets of the existing"
+                print "  entries.  Leave blank if you do not want a list-password."
+                print
+            listpw = getpass.getpass('  Enter list-password [no list-password]: ')
+            if first:
+                print
+                print "  A container can have an append-password.  With this password you"
+                print "  can only add entries.  You cannot see the existing entries."
+                print "  Leave blank if you do not want an append-passowrd."
+                print
+            appendpw = getpass.getpass('  Enter append-password [no append-password]: ')
+            if second:
+                second = False
+            if first:
+                first = False
+                second = True
+            pws.append((masterpw if masterpw else None,
+                        listpw if listpw else None,
+                        appendpw if appendpw else None))
+        print 'Generating group parameters for this safe. This can take a while ...'
         # TODO add sanity checks for rerand_bits and nworkers
+        # TODO generate group parameters in parallel
         progressbar = pol.progressbar.ProbablisticProgressBar()
         progressbar.start()
         def progress(step, x):
@@ -124,8 +173,11 @@ class Program(object):
                                       progress=progress,
                                       precomputed_gp=self.args.precomputed_gp,
                                       use_threads=self.args.threads)
-        # TODO stub
-        c = safe.new_container('p', 'l', 'a')
+        for i, mlapw in enumerate(pws):
+            mpw, lpw, apw = mlapw
+            print '  allocating container #%s ...' % (i+1)
+            c = safe.new_container(mpw, lpw, apw)
+        print '  trashing freespace ...'
         safe.trash_freespace()
         with open(os.path.expanduser(self.args.safe), 'w') as f:
             safe.store(f)

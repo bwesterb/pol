@@ -14,13 +14,13 @@ setup(
     package_dir={'pol': 'src'},
     license='GPL 3.0',
     install_requires = [
-        'pycrypto>=2.6',        # TODO do we need this version
-        'msgpack-python>=0.2',  #      ibidem
-        'gmpy>=1.15',           #      ibidem
-        'scrypt>=0.5.5',        #      ibidem
-        'yappi>=0.62',          #      ibidem
-        'python-mcrypt>=1.1',   #      ibidem
-        'lockfile>=0.8',        #      ibidem
+        'pycrypto >=2.6',        # TODO do we need this version
+        'msgpack-python >=0.2',  #      ibidem
+        'gmpy >=1.15, <2',       #      ibidem
+        'scrypt >=0.5.5',        #      ibidem
+        'yappi >=0.62',          #      ibidem
+        'python-mcrypt >=1.1',   #      ibidem
+        'lockfile >=0.8',        #      ibidem
         ],
     entry_points = {
         'console_scripts': [

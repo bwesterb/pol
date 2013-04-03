@@ -43,10 +43,15 @@ class Program(object):
         p_init.add_argument('--precomputed-group-parameters', '-P',
                         action='store_true', dest='precomputed_gp',
                     help='Use precomputed group parameters for rerandomization')
+        p_init.add_argument('--passwords', '-p', nargs='+', metavar='PW',
+                    help='Passwords for containers as normally input '+
+                            'interactively')
         p_init.set_defaults(func=self.cmd_init)
 
         p_list = subparsers.add_parser('list',
                     help='List entries')
+        p_list.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to list')
         p_list.set_defaults(func=self.cmd_list)
 
         p_generate = subparsers.add_parser('generate',
@@ -55,17 +60,23 @@ class Program(object):
         p_generate.add_argument('--note', '-n')
         p_generate.add_argument('--no-copy', '-N', action='store_true',
                     help='Do not copy secret to clipboard.')
+        p_generate.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to add password to')
         p_generate.set_defaults(func=self.cmd_generate)
 
         p_paste = subparsers.add_parser('paste',
                     help='Stores a secret from the clipboard')
         p_paste.add_argument('key')
         p_paste.add_argument('--note', '-n')
+        p_paste.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to add secret to')
         p_paste.set_defaults(func=self.cmd_paste)
 
         p_copy = subparsers.add_parser('copy',
                     help='Copies a password to the clipboard')
         p_copy.add_argument('key')
+        p_copy.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to copy secret from')
         p_copy.set_defaults(func=self.cmd_copy)
 
         p_put = subparsers.add_parser('put',
@@ -75,11 +86,15 @@ class Program(object):
         p_put.add_argument('--secret', '-s',
                     help='The secret to store.  If none is specified, reads '+
                          'secret from stdin.')
+        p_put.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to add secret to')
         p_put.set_defaults(func=self.cmd_put)
 
         p_get = subparsers.add_parser('get',
                     help='Write secret to stdout')
         p_get.add_argument('key')
+        p_get.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to get secret from')
         p_get.set_defaults(func=self.cmd_get)
 
         p_touch = subparsers.add_parser('touch',
@@ -96,6 +111,11 @@ class Program(object):
                     help='Imports entries from a psafe3 db')
         p_import_psafe3.add_argument('path',
                     help='Path to psafe3 database')
+        p_import_psafe3.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to import to')
+        p_import_psafe3.add_argument('--psafe3-password', '-P',
+                    metavar='PASSWORD',
+                    help='Password of psafe3 db to import')
         p_import_psafe3.set_defaults(func=self.cmd_import_psafe3)
 
         self.args = parser.parse_args(argv)
@@ -138,46 +158,62 @@ class Program(object):
         return ret
 
     def cmd_init(self):
-        print "You are about to create a new safe.  A can have up to six"
-        print "separate containers to store your secrets.  A container is"
-        print "accessed by one of its passwords.  Without one of its passwords,"
-        print "you cannot prove the existence of a container."
-        print
+        if self.args.passwords:
+            interactive = False
+            cmdline_pws = list(reversed(self.args.passwords))
+        else:
+            interactive = True
+        if interactive:
+            print "You are about to create a new safe.  A can have up to six"
+            print "separate containers to store your secrets.  A container is"
+            print "accessed by one of its passwords.  Without one of its passwords,"
+            print "you cannot prove the existence of a container."
+            print
         first = True
         second = False
         pws = []
         for i in xrange(1, 7):
-            if not first:
-                print
-            print 'Container #%s' % i
-            if first:
-                print "  Each container must have a master-password.  This password gives"
-                print "  full access to the container."
-                print
-            if second:
-                print "  Now enter the passwords for the second container."
-                print "  Leave blank if you do not want a second container."
-                print
-            if first:
-                masterpw = getpass.getpass('    Enter master-password: ')
+            if interactive:
+                if not first:
+                    print
+                print 'Container #%s' % i
+                if first:
+                    print "  Each container must have a master-password.  This password gives"
+                    print "  full access to the container."
+                    print
+                if second:
+                    print "  Now enter the passwords for the second container."
+                    print "  Leave blank if you do not want a second container."
+                    print
+            if interactive:
+                if first:
+                    masterpw = getpass.getpass('    Enter master-password: ')
+                else:
+                    masterpw = getpass.getpass('    Enter master-password [stop]: ')
             else:
-                masterpw = getpass.getpass('    Enter master-password [stop]: ')
-                if not masterpw:
+                masterpw = cmdline_pws.pop() if cmdline_pws else ''
+            if not first and not masterpw:
                     break
-            if first:
+            if interactive and first:
                 print
                 print "  A container can have a list-password.  With this password you can"
                 print "  list and add entries.  You cannot see the secrets of the existing"
                 print "  entries.  Leave blank if you do not want a list-password."
                 print
-            listpw = getpass.getpass('    Enter list-password [no list-password]: ')
-            if first:
+            if interactive:
+                listpw = getpass.getpass('    Enter list-password [no list-password]: ')
+            else:
+                listpw = cmdline_pws.pop() if cmdline_pws else ''
+            if interactive and first:
                 print
                 print "  A container can have an append-password.  With this password you"
                 print "  can only add entries.  You cannot see the existing entries."
                 print "  Leave blank if you do not want an append-passowrd."
                 print
-            appendpw = getpass.getpass('    Enter append-password [no append-password]: ')
+            if interactive:
+                appendpw = getpass.getpass('    Enter append-password [no append-password]: ')
+            else:
+                appendpw = cmdline_pws.pop() if cmdline_pws else ''
             if second:
                 second = False
             if first:
@@ -186,7 +222,8 @@ class Program(object):
             pws.append((masterpw if masterpw else None,
                         listpw if listpw else None,
                         appendpw if appendpw else None))
-        print
+        if interactive:
+            print
         if not self.args.precomputed_gp:
             print 'Generating group parameters for this safe. This can take a while ...'
         # TODO add sanity checks for rerand_bits and nworkers
@@ -236,7 +273,8 @@ class Program(object):
             found_one = False
             entries = []
             for container in safe.open_containers(
-                    getpass.getpass('Enter password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -271,7 +309,8 @@ class Program(object):
             found_one = False
             entries = []
             for container in safe.open_containers(
-                    getpass.getpass('Enter password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -334,7 +373,8 @@ class Program(object):
             found_one = False
             stored = False
             for container in safe.open_containers(
-                    getpass.getpass('Enter (append-)password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -357,7 +397,8 @@ class Program(object):
         with pol.safe.open(os.path.expanduser(self.args.safe),
                            progress=self._rerand_progress()) as safe:
             for container in safe.open_containers(
-                    getpass.getpass('Enter (append-)password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -390,7 +431,8 @@ class Program(object):
                            readonly=True) as safe:
             found_one = False
             for container in safe.open_containers(
-                    getpass.getpass('Enter (list-)password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter (list-)password: ')):
                 if not found_one:
                     found_one = True
                 else:
@@ -411,7 +453,8 @@ class Program(object):
     def cmd_import_psafe3(self):
         # First load psafe3 db
         import pol.importers.psafe3
-        ps3pwd = getpass.getpass('Enter password for psafe3 db: ')
+        ps3pwd = (self.args.psafe3_password if self.args.psafe3_password
+                        else getpass.getpass('Enter password for psafe3 db: '))
         with open(self.args.path) as f:
             header, records = pol.importers.psafe3.load(f, ps3pwd)
 
@@ -421,7 +464,8 @@ class Program(object):
             found_one = False
             the_container = None
             for container in safe.open_containers(
-                    getpass.getpass('Enter (append-)password: ')):
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:

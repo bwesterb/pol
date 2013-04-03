@@ -27,6 +27,20 @@ pol /pɵl/ is a password manager with two important features:
       and a password of one of the containers, he cannot prove that there
       are more containers.
 
+Installation
+------------
+
+### On Ubuntu
+
+    $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
+                        python-pip
+    $ pip install pol
+
+### On Mac with MacPorts
+
+    $ port install gmp mcrypt
+    $ pip install pol
+
 [![Build Status](https://travis-ci.org/bwesterb/pol.png)](
    https://travis-ci.org/bwesterb/pol)
       

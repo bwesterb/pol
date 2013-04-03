@@ -112,7 +112,10 @@ class Program(object):
             sys.stderr.write("%s: no such file.\n" % self.args.safe)
             sys.stderr.write("To create a new safe, run `pol init'.\n")
             return -5
-
+        except pol.safe.SafeLocked:
+            sys.stderr.write("%s: locked.\n" % self.args.safe)
+            # TODO add a `pol break-lock'
+            return -6
         if self.args.profile:
             yappi.print_stats()
 

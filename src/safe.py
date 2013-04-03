@@ -41,6 +41,9 @@ class SafeFullError(ValueError):
 class SafeFormatError(ValueError):
     pass
 
+class SafeLocked(ValueError):
+    pass
+
 class SafeAlreadyExistsError(ValueError):
     pass
 
@@ -50,13 +53,22 @@ def create(path, override=False, *args, **kwargs):
 
         Contrary to `Safe.generate', this function also takes care
         of locking. """
-    with lockfile.FileLock(path):
+    locked = False
+    try:
+        lock = lockfile.FileLock(path)
+        lock.acquire(0)
+        locked = True
         if os.path.exists(path) and not override:
             raise SafeAlreadyExistsError
         with _builtin_open(path, 'w') as f:
             safe = Safe.generate(*args, **kwargs)
             yield safe
             safe.store_to_stream(f)
+    except lockfile.AlreadyLocked:
+        raise SafeLocked
+    finally:
+        if locked:
+            lock.release()
 
 _builtin_open = open
 
@@ -67,7 +79,11 @@ def open(path, readonly=False, progress=None):
         Contrary to `Safe.load_from_stream', this function also takes care
         of locking. """
     # TODO Allow multiple readers.
-    with lockfile.FileLock(path):
+    locked = False
+    try:
+        lock = lockfile.FileLock(path)
+        lock.acquire(0)
+        locked = True
         if not os.path.exists(path):
             raise SafeNotFoundError
         with _builtin_open(path, 'r' if readonly else 'r+') as f:
@@ -78,6 +94,11 @@ def open(path, readonly=False, progress=None):
                 f.seek(0, 0)
                 f.truncate()
                 safe.store_to_stream(f)
+    except lockfile.AlreadyLocked:
+        raise SafeLocked
+    finally:
+        if locked:
+            lock.release()
 
 class Safe(object):
     """ A pol safe deniably stores containers. (Containers store secrets.) """

@@ -105,6 +105,9 @@ class Container(object):
         """ Saves the changes made to the container to the safe. """
         raise NotImplementedError
     @property
+    def can_add(self):
+        raise NotImplementedError
+    @property
     def id(self):
         """ An identifier for the container. """
         raise NotImplementedError
@@ -199,6 +202,9 @@ class ElGamalSafe(Safe):
                 raise MissingKey
             self.main_data.entries.append((key, note))
             self.secret_data.entries.append(secret)
+        @property
+        def can_add(self):
+            return bool(self.secret_data)
         @property
         def id(self):
             return (self.append_slice.first_index if self.append_slice else

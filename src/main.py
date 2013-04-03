@@ -371,13 +371,13 @@ class Program(object):
         # Import the records
         for record in records:
             notes = []
-            if 'notes' in record:
+            if 'notes' in record and record['notes']:
                 notes.append(record['notes'])
-            if 'email-address' in record:
+            if 'email-address' in record and record['email-address']:
                 notes.append('email: '+record['email-address'])
-            if 'username' in record:
+            if 'username' in record and record['username']:
                 notes.append('user: '+record['username'])
-            if 'url' in record:
+            if 'url' in record and record['url']:
                 notes.append('url: '+record['url'])
             the_container.add(record['title'],
                               '\n'.join(notes),

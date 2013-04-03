@@ -75,6 +75,12 @@ class Program(object):
                     help='Also print blocks')
         p_raw.set_defaults(func=self.cmd_raw)
 
+        p_import_psafe3 = subparsers.add_parser('import-psafe3',
+                    help='Imports entries from a psafe3 db')
+        p_import_psafe3.add_argument('path',
+                    help='Path to psafe3 database')
+        p_import_psafe3.set_defaults(func=self.cmd_import_psafe3)
+
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
@@ -330,6 +336,53 @@ class Program(object):
                 print '  (no list access)'
         if not found_one:
             print ' No containers found'
+
+    def cmd_import_psafe3(self):
+        # First load psafe3 db
+        import pol.importers.psafe3
+        ps3pwd = getpass.getpass('Enter password for psafe3 db: ')
+        with open(self.args.path) as f:
+            header, records = pol.importers.psafe3.load(f, ps3pwd)
+
+        # Secondly, find a container
+        with open(os.path.expanduser(self.args.safe)) as f:
+            safe = pol.safe.Safe.load(f)
+        found_one = False
+        the_container = None
+        for container in safe.open_containers(
+                getpass.getpass('Enter (append-)password: ')):
+            if not found_one:
+                found_one = True
+            if container.can_add:
+                the_container = container
+                break
+        if not found_one:
+            print 'The password did not open any container.'
+            return -1
+        if not the_container:
+            print 'No append access to the containers opened by this password'
+            return -2
+
+        # Import the records
+        for record in records:
+            notes = []
+            if 'notes' in record:
+                notes.append(record['notes'])
+            if 'email-address' in record:
+                notes.append('email: '+record['email-address'])
+            if 'username' in record:
+                notes.append('user: '+record['username'])
+            if 'url' in record:
+                notes.append('url: '+record['url'])
+            the_container.add(record['title'],
+                              '\n'.join(notes),
+                              record['password'])
+        the_container.save()
+        print "%s records imported" % len(records)
+
+        self._rerandomize(safe)
+        with open(os.path.expanduser(self.args.safe), 'w') as f:
+            safe.store(f)
 
     def _rerandomize(self, safe):
         progressbar = pol.progressbar.ProgressBar()

@@ -225,6 +225,9 @@ class Program(object):
         if not found_one:
             print 'The password did not open any container.'
             return -1
+        if not entries:
+            print 'No entries found'
+            return -4
         if len(entries) == 1:
             entry = entries[0][1]
             print ' note: %s' % repr(entry[1])
@@ -265,6 +268,7 @@ class Program(object):
                 container.add(self.args.key, self.args.note, pw)
                 container.save()
                 stored = True
+                break
             except pol.safe.MissingKey:
                 pass
         if not found_one:
@@ -292,6 +296,7 @@ class Program(object):
                 container.add(self.args.key, self.args.note, pw)
                 container.save()
                 stored = True
+                break
             except pol.safe.MissingKey:
                 pass
         if not found_one:

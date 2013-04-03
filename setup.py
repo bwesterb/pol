@@ -10,7 +10,7 @@ setup(
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',
     url='http://github.com/bwesterb/pol/',
-    packages=['pol', 'pol.tests'],
+    packages=['pol', 'pol.tests', 'pol.importers'],
     package_dir={'pol': 'src'},
     license='GPL 3.0',
     install_requires = [
@@ -19,6 +19,7 @@ setup(
         'gmpy>=1.15',           #      ibidem
         'scrypt>=0.5.5',        #      ibidem
         'yappi>=0.62',          #      ibidem
+        'python-mcrypt>=1.1',   #      ibidem
         ],
     entry_points = {
         'console_scripts': [

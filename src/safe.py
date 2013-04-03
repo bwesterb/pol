@@ -32,6 +32,9 @@ class MissingKey(ValueError):
 class WrongKeyError(ValueError):
     pass
 
+class SafeNotFoundError(ValueError):
+    pass
+
 class SafeFullError(ValueError):
     pass
 
@@ -65,6 +68,8 @@ def open(path, readonly=False, progress=None):
         of locking. """
     # TODO Allow multiple readers.
     with lockfile.FileLock(path):
+        if not os.path.exists(path):
+            raise SafeNotFoundError
         with _builtin_open(path, 'r' if readonly else 'r+') as f:
             safe = Safe.load_from_stream(f)
             yield safe

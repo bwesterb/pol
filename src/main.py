@@ -106,7 +106,12 @@ class Program(object):
             yappi.start()
 
         # Execute command
-        ret = self.args.func()
+        try:
+            ret = self.args.func()
+        except pol.safe.SafeNotFoundError:
+            sys.stderr.write("%s: no such file.\n" % self.args.safe)
+            sys.stderr.write("To create a new safe, run `pol init'.\n")
+            return -5
 
         if self.args.profile:
             yappi.print_stats()

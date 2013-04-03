@@ -334,7 +334,7 @@ class Program(object):
                 got_entry = False
                 for key, note in container.list():
                     got_entry = True
-                    print ' %-20s %s' % (key, note if note else '')
+                    print ' %-20s %s' % (key, repr(note) if note else '')
                 if not got_entry:
                     print '  (empty)'
             except pol.safe.MissingKey:

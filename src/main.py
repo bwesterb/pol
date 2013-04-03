@@ -103,8 +103,11 @@ class Program(object):
 
         p_raw = subparsers.add_parser('raw',
                     help='Shows raw data of safe')
-        p_raw.add_argument('--blocks', '-b', action='store_true', dest='blocks',
-                    help='Also print blocks')
+        p_raw.add_argument('--blocks', '-b', action='store_true',
+                    help='Also print raw blocks')
+        p_raw.add_argument('--passwords', '-p', nargs='+', metavar='PW',
+                    help='Also show data of containers opened by '+
+                            'these passwords')
         p_raw.set_defaults(func=self.cmd_raw)
 
         p_import_psafe3 = subparsers.add_parser('import-psafe3',
@@ -262,10 +265,20 @@ class Program(object):
     def cmd_raw(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
                            readonly=True) as safe:
-            d = safe.data
+            d = dict(safe.data)
             if not self.args.blocks:
                 del d['blocks']
             pprint.pprint(d)
+            for password in self.args.passwords:
+                for container in safe.open_containers(password):
+                    print
+                    print 'Container %s' % container.id
+                    if container.main_data:
+                        pprint.pprint(container.main_data)
+                    if container.append_data:
+                        pprint.pprint(container.append_data)
+                    if container.secret_data:
+                        pprint.pprint(container.secret_data)
 
     def cmd_get(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),

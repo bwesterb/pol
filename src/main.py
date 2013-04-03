@@ -53,6 +53,8 @@ class Program(object):
                     help='Generates and stores a password')
         p_generate.add_argument('key')
         p_generate.add_argument('--note', '-n')
+        p_generate.add_argument('--no-copy', '-N', action='store_true',
+                    help='Do not copy secret to clipboard.')
         p_generate.set_defaults(func=self.cmd_generate)
 
         p_paste = subparsers.add_parser('paste',
@@ -65,6 +67,20 @@ class Program(object):
                     help='Copies a password to the clipboard')
         p_copy.add_argument('key')
         p_copy.set_defaults(func=self.cmd_copy)
+
+        p_put = subparsers.add_parser('put',
+                    help='Stores a secret')
+        p_put.add_argument('key')
+        p_put.add_argument('--note', '-n')
+        p_put.add_argument('--secret', '-s',
+                    help='The secret to store.  If none is specified, reads '+
+                         'secret from stdin.')
+        p_put.set_defaults(func=self.cmd_put)
+
+        p_get = subparsers.add_parser('get',
+                    help='Write secret to stdout')
+        p_get.add_argument('key')
+        p_get.set_defaults(func=self.cmd_get)
 
         p_touch = subparsers.add_parser('touch',
                     help='Rerandomizes blocks')
@@ -214,7 +230,42 @@ class Program(object):
                 del d['blocks']
             pprint.pprint(d)
 
+    def cmd_get(self):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           readonly=True) as safe:
+            found_one = False
+            entries = []
+            for container in safe.open_containers(
+                    getpass.getpass('Enter password: ')):
+                if not found_one:
+                    found_one = True
+                try:
+                    for entry in container.get(self.args.key):
+                        if len(entry) == 3:
+                            entries.append((container, entry))
+                except pol.safe.MissingKey:
+                    continue
+                except KeyError:
+                    continue
+            if not found_one:
+                sys.stderr.write('The password did not open any container.\n')
+                return -1
+            if not entries:
+                sys.stderr.write('No entries found.\n')
+                return -4
+            if len(entries) > 1:
+                sys.stderr.write("Multiple entries found.\n")
+                return -8
+            entry = entries[0][1]
+            sys.stderr.write(' note: %s\n' % repr(entry[1]))
+            print entry[2]
+            return
+
     def cmd_copy(self):
+        if not pol.clipboard.available:
+            print 'Clipboard access not available.'
+            print 'Use `pol get\' to print secrets.'
+            return -7
         with pol.safe.open(os.path.expanduser(self.args.safe),
                            readonly=True) as safe:
             found_one = False
@@ -261,10 +312,23 @@ class Program(object):
                 pol.terminal.wait_for_keypress()
                 pol.clipboard.clear()
     def cmd_paste(self):
+        if not pol.clipboard.available:
+            print 'Clipboard access not available.'
+            print 'Use `pol put\' to add passwords from stdin.'
+            return -7
         pw = pol.clipboard.paste()
         if not pw:
             print 'Clipboard is empty'
             return -3
+        return self._store(pw)
+        pol.clipboard.clear()
+    def cmd_put(self):
+        pw = self.args.secret if self.args.secret else sys.stdin.read()
+        if not pw:
+            print 'No secret given'
+            return -3
+        return self._store(pw)
+    def _store(self, pw):
         with pol.safe.open(os.path.expanduser(self.args.safe),
                            progress=self._rerand_progress()) as safe:
             found_one = False
@@ -286,7 +350,6 @@ class Program(object):
             if found_one and not stored:
                 print 'No append access to the containers opened by this password'
                 return -2
-            pol.clipboard.clear()
     def cmd_generate(self):
         pw = pol.passgen.generate_password()
         found_one = False
@@ -310,8 +373,13 @@ class Program(object):
             if found_one and not stored:
                 print 'No append access to the containers opened by this password'
                 return -2
+            if not pol.clipboard.available:
+                print 'Password stored.  Clipboard access not available.'
+                print 'Use `pol get\' to show password'
+                return
+            if self.args.no_copy:
+                return
             pol.clipboard.copy(pw)
-
             print 'Copied password to clipboard.  Press any key to clear ...'
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()

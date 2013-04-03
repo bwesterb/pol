@@ -4,7 +4,6 @@
 
     Contains the argument parser and CLI interaction. """
 
-import threading
 import argparse
 import logging
 import os.path
@@ -36,6 +35,8 @@ class Program(object):
 
         p_init = subparsers.add_parser('init',
                     help='Create a new safe')
+        p_init.add_argument('--force', '-f', action='store_true',
+                    help='Remove any existing safe')
         p_init.add_argument('--rerand-bits', '-R', type=int, default=1025,
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
@@ -113,7 +114,6 @@ class Program(object):
         return ret
 
     def cmd_init(self):
-        # TODO do not override existing safe
         print "You are about to create a new safe.  A can have up to six"
         print "separate containers to store your secrets.  A container is"
         print "accessed by one of its passwords.  Without one of its passwords,"
@@ -176,171 +176,161 @@ class Program(object):
                 progressbar(x)
             elif step == 'g':
                 progressbar.end()
-        safe = pol.safe.Safe.generate(nworkers=self.args.workers,
-                                      gp_bits=self.args.rerand_bits,
-                                      progress=progress,
-                                      precomputed_gp=self.args.precomputed_gp,
-                                      use_threads=self.args.threads)
-        for i, mlapw in enumerate(pws):
-            mpw, lpw, apw = mlapw
-            print '  allocating container #%s ...' % (i+1)
-            c = safe.new_container(mpw, lpw, apw)
-        print '  trashing freespace ...'
-        safe.trash_freespace()
-        with open(os.path.expanduser(self.args.safe), 'w') as f:
-            safe.store(f)
+        try:
+            with pol.safe.create(os.path.expanduser(self.args.safe),
+                                 override=self.args.force,
+                                 nworkers=self.args.workers,
+                                 gp_bits=self.args.rerand_bits,
+                                 progress=progress,
+                                 precomputed_gp=self.args.precomputed_gp,
+                                 use_threads=self.args.threads) as safe:
+                for i, mlapw in enumerate(pws):
+                    mpw, lpw, apw = mlapw
+                    print '  allocating container #%s ...' % (i+1)
+                    c = safe.new_container(mpw, lpw, apw)
+                print '  trashing freespace ...'
+                safe.trash_freespace()
+        except pol.safe.SafeAlreadyExistsError:
+            print '%s exists.  Use -f to override.' % self.args.safe
     
     def cmd_touch(self):
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        self._rerandomize(safe)
-        with open(os.path.expanduser(self.args.safe), 'w') as f:
-            safe.store(f)
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           progress=self._rerand_progress()):
+            pass
 
     def cmd_raw(self):
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        d = safe.data
-        if not self.args.blocks:
-            del d['blocks']
-        pprint.pprint(d)
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           readonly=True) as safe:
+            d = safe.data
+            if not self.args.blocks:
+                del d['blocks']
+            pprint.pprint(d)
 
     def cmd_copy(self):
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        found_one = False
-        entries = []
-        for container in safe.open_containers(
-                getpass.getpass('Enter password: ')):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           readonly=True) as safe:
+            found_one = False
+            entries = []
+            for container in safe.open_containers(
+                    getpass.getpass('Enter password: ')):
+                if not found_one:
+                    found_one = True
+                try:
+                    for entry in container.get(self.args.key):
+                        if len(entry) == 3:
+                            entries.append((container, entry))
+                except pol.safe.MissingKey:
+                    continue
+                except KeyError:
+                    continue
             if not found_one:
-                found_one = True
-            try:
-                for entry in container.get(self.args.key):
-                    if len(entry) == 3:
-                        entries.append((container, entry))
-            except pol.safe.MissingKey:
-                continue
-            except KeyError:
-                continue
-        if not found_one:
-            print 'The password did not open any container.'
-            return -1
-        if not entries:
-            print 'No entries found'
-            return -4
-        if len(entries) == 1:
-            entry = entries[0][1]
-            print ' note: %s' % repr(entry[1])
-            print 'Copied secret to clipboard.  Press any key to clear ...'
-            pol.clipboard.copy(entry[2])
-            pol.terminal.wait_for_keypress()
-            pol.clipboard.clear()
-            return
-        print '%s entries found.' % len(entries)
-        print
-        first = True
-        for i, tmp in enumerate(entries):
-            if first:
-                first = False
-            else:
-                print
-            container, entry = tmp
-            print 'Entry #%s from container @%s' % (i+1, container.id)
-            print ' note: %s' % repr(entry[1])
-            print 'Copied secret to clipboard.  Press any key to clear ...'
-            pol.clipboard.copy(entry[2])
-            pol.terminal.wait_for_keypress()
-            pol.clipboard.clear()
+                print 'The password did not open any container.'
+                return -1
+            if not entries:
+                print 'No entries found'
+                return -4
+            if len(entries) == 1:
+                entry = entries[0][1]
+                print ' note: %s' % repr(entry[1])
+                print 'Copied secret to clipboard.  Press any key to clear ...'
+                pol.clipboard.copy(entry[2])
+                pol.terminal.wait_for_keypress()
+                pol.clipboard.clear()
+                return
+            print '%s entries found.' % len(entries)
+            print
+            first = True
+            for i, tmp in enumerate(entries):
+                if first:
+                    first = False
+                else:
+                    print
+                container, entry = tmp
+                print 'Entry #%s from container @%s' % (i+1, container.id)
+                print ' note: %s' % repr(entry[1])
+                print 'Copied secret to clipboard.  Press any key to clear ...'
+                pol.clipboard.copy(entry[2])
+                pol.terminal.wait_for_keypress()
+                pol.clipboard.clear()
     def cmd_paste(self):
         pw = pol.clipboard.paste()
         if not pw:
             print 'Clipboard is empty'
             return -3
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        found_one = False
-        stored = False
-        for container in safe.open_containers(
-                getpass.getpass('Enter (append-)password: ')):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           progress=self._rerand_progress()) as safe:
+            found_one = False
+            stored = False
+            for container in safe.open_containers(
+                    getpass.getpass('Enter (append-)password: ')):
+                if not found_one:
+                    found_one = True
+                try:
+                    container.add(self.args.key, self.args.note, pw)
+                    container.save()
+                    stored = True
+                    break
+                except pol.safe.MissingKey:
+                    pass
             if not found_one:
-                found_one = True
-            try:
-                container.add(self.args.key, self.args.note, pw)
-                container.save()
-                stored = True
-                break
-            except pol.safe.MissingKey:
-                pass
-        if not found_one:
-            print 'The password did not open any container.'
-            return -1
-        if found_one and not stored:
-            print 'No append access to the containers opened by this password'
-            return -2
-        pol.clipboard.clear()
-        self._rerandomize(safe)
-        with open(os.path.expanduser(self.args.safe), 'w') as f:
-            safe.store(f)
-
+                print 'The password did not open any container.'
+                return -1
+            if found_one and not stored:
+                print 'No append access to the containers opened by this password'
+                return -2
+            pol.clipboard.clear()
     def cmd_generate(self):
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
         pw = pol.passgen.generate_password()
         found_one = False
         stored = False
-        for container in safe.open_containers(
-                getpass.getpass('Enter (append-)password: ')):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           progress=self._rerand_progress()) as safe:
+            for container in safe.open_containers(
+                    getpass.getpass('Enter (append-)password: ')):
+                if not found_one:
+                    found_one = True
+                try:
+                    container.add(self.args.key, self.args.note, pw)
+                    container.save()
+                    stored = True
+                    break
+                except pol.safe.MissingKey:
+                    pass
             if not found_one:
-                found_one = True
-            try:
-                container.add(self.args.key, self.args.note, pw)
-                container.save()
-                stored = True
-                break
-            except pol.safe.MissingKey:
-                pass
-        if not found_one:
-            print 'The password did not open any container.'
-            return -1
-        if found_one and not stored:
-            print 'No append access to the containers opened by this password'
-            return -2
-        pol.clipboard.copy(pw)
+                print 'The password did not open any container.'
+                return -1
+            if found_one and not stored:
+                print 'No append access to the containers opened by this password'
+                return -2
+            pol.clipboard.copy(pw)
 
-        finished = threading.Event()
-        def finish_up():
-            self._rerandomize(safe)
-            with open(os.path.expanduser(self.args.safe), 'w') as f:
-                safe.store(f)
-            finished.set()
-        threading.Thread(target=finish_up).start()
-        print 'Copied password to clipboard.  Press any key to clear ...'
-        pol.terminal.wait_for_keypress()
-        pol.clipboard.clear()
-        finished.wait()
+            print 'Copied password to clipboard.  Press any key to clear ...'
+            pol.terminal.wait_for_keypress()
+            pol.clipboard.clear()
+            # TODO do rerandomization in parallel
 
     def cmd_list(self):
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        found_one = False
-        for container in safe.open_containers(
-                getpass.getpass('Enter (list-)password: ')):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           readonly=True) as safe:
+            found_one = False
+            for container in safe.open_containers(
+                    getpass.getpass('Enter (list-)password: ')):
+                if not found_one:
+                    found_one = True
+                else:
+                    print
+                print 'Container @%s' % container.id
+                try:
+                    got_entry = False
+                    for key, note in container.list():
+                        got_entry = True
+                        print ' %-20s %s' % (key, repr(note) if note else '')
+                    if not got_entry:
+                        print '  (empty)'
+                except pol.safe.MissingKey:
+                    print '  (no list access)'
             if not found_one:
-                found_one = True
-            else:
-                print
-            print 'Container @%s' % container.id
-            try:
-                got_entry = False
-                for key, note in container.list():
-                    got_entry = True
-                    print ' %-20s %s' % (key, repr(note) if note else '')
-                if not got_entry:
-                    print '  (empty)'
-            except pol.safe.MissingKey:
-                print '  (no list access)'
-        if not found_one:
-            print ' No containers found'
+                print ' No containers found'
 
     def cmd_import_psafe3(self):
         # First load psafe3 db
@@ -350,56 +340,52 @@ class Program(object):
             header, records = pol.importers.psafe3.load(f, ps3pwd)
 
         # Secondly, find a container
-        with open(os.path.expanduser(self.args.safe)) as f:
-            safe = pol.safe.Safe.load(f)
-        found_one = False
-        the_container = None
-        for container in safe.open_containers(
-                getpass.getpass('Enter (append-)password: ')):
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           progress=self._rerand_progress()) as safe:
+            found_one = False
+            the_container = None
+            for container in safe.open_containers(
+                    getpass.getpass('Enter (append-)password: ')):
+                if not found_one:
+                    found_one = True
+                if container.can_add:
+                    the_container = container
+                    break
             if not found_one:
-                found_one = True
-            if container.can_add:
-                the_container = container
-                break
-        if not found_one:
-            print 'The password did not open any container.'
-            return -1
-        if not the_container:
-            print 'No append access to the containers opened by this password'
-            return -2
+                print 'The password did not open any container.'
+                return -1
+            if not the_container:
+                print ('No append access to the containers opened '+
+                            'by this password')
+                return -2
 
-        # Import the records
-        for record in records:
-            notes = []
-            if 'notes' in record and record['notes']:
-                notes.append(record['notes'])
-            if 'email-address' in record and record['email-address']:
-                notes.append('email: '+record['email-address'])
-            if 'username' in record and record['username']:
-                notes.append('user: '+record['username'])
-            if 'url' in record and record['url']:
-                notes.append('url: '+record['url'])
-            the_container.add(record['title'],
-                              '\n'.join(notes),
-                              record['password'])
-        the_container.save()
-        print "%s records imported" % len(records)
+            # Import the records
+            for record in records:
+                notes = []
+                if 'notes' in record and record['notes']:
+                    notes.append(record['notes'])
+                if 'email-address' in record and record['email-address']:
+                    notes.append('email: '+record['email-address'])
+                if 'username' in record and record['username']:
+                    notes.append('user: '+record['username'])
+                if 'url' in record and record['url']:
+                    notes.append('url: '+record['url'])
+                the_container.add(record['title'],
+                                  '\n'.join(notes),
+                                  record['password'])
+            the_container.save()
+            print "%s records imported" % len(records)
 
-        self._rerandomize(safe)
-        with open(os.path.expanduser(self.args.safe), 'w') as f:
-            safe.store(f)
-
-    def _rerandomize(self, safe):
+    def _rerand_progress(self):
         progressbar = pol.progressbar.ProgressBar()
-        progressbar.start()
+        started = False
         def progress(v):
+            if not started:
+                progressbar.start()
             progressbar(v)
             if v == 1.0:
                 progressbar.end()
-        safe.rerandomize(nworkers=self.args.workers,
-                         use_threads=self.args.threads,
-                         progress=progress)
-
+        return progress
 
 def entrypoint(argv):
     return Program().main(argv)

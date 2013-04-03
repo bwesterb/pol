@@ -3,7 +3,9 @@
 import time
 import struct
 import logging
+import os.path
 import binascii
+import contextlib
 import collections
 import multiprocessing
 
@@ -13,6 +15,7 @@ import pol.elgamal
 import pol.ks
 import pol.kd
 
+import lockfile
 import msgpack
 import gmpy
 
@@ -35,6 +38,42 @@ class SafeFullError(ValueError):
 class SafeFormatError(ValueError):
     pass
 
+class SafeAlreadyExistsError(ValueError):
+    pass
+
+@contextlib.contextmanager
+def create(path, override=False, *args, **kwargs):
+    """ Generates a new safe.
+
+        Contrary to `Safe.generate', this function also takes care
+        of locking. """
+    with lockfile.FileLock(path):
+        if os.path.exists(path) and not override:
+            raise SafeAlreadyExistsError
+        with _builtin_open(path, 'w') as f:
+            safe = Safe.generate(*args, **kwargs)
+            yield safe
+            safe.store_to_stream(f)
+
+_builtin_open = open
+
+@contextlib.contextmanager
+def open(path, readonly=False, progress=None):
+    """ Loads a safe from the filesystem.
+
+        Contrary to `Safe.load_from_stream', this function also takes care
+        of locking. """
+    # TODO Allow multiple readers.
+    with lockfile.FileLock(path):
+        with _builtin_open(path, 'r' if readonly else 'r+') as f:
+            safe = Safe.load_from_stream(f)
+            yield safe
+            if not readonly:
+                safe.rerandomize(progress=progress)
+                f.seek(0, 0)
+                f.truncate()
+                safe.store_to_stream(f)
+
 class Safe(object):
     """ A pol safe deniably stores containers. (Containers store secrets.) """
 
@@ -51,14 +90,21 @@ class Safe(object):
         self.cipher = pol.blockcipher.BlockCipher.setup(
                             self.data['block-cipher'])
 
-    def store(self, stream):
+    def store_to_stream(self, stream):
+        """ Stores the Safe to `stream'.
+
+            This is done automatically if opened with `open'. """
         start_time = time.time()
         l.debug('Packing ...')
         msgpack.pack(self.data, stream)
         l.debug(' packed in %.2fs', time.time() - start_time)
 
     @staticmethod
-    def load(stream):
+    def load_from_stream(stream):
+        """ Loads a Safe form a `stream'.
+
+            If you load from a file, use `open' for that function also
+            handles locking. """
         start_time = time.time()
         l.debug('Unpacking ...')
         data = msgpack.unpack(stream, use_list=True)

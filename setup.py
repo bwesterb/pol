@@ -20,6 +20,7 @@ setup(
         'scrypt>=0.5.5',        #      ibidem
         'yappi>=0.62',          #      ibidem
         'python-mcrypt>=1.1',   #      ibidem
+        'lockfile>=0.8',        #      ibidem
         ],
     entry_points = {
         'console_scripts': [

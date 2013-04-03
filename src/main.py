@@ -269,6 +269,8 @@ class Program(object):
             if not self.args.blocks:
                 del d['blocks']
             pprint.pprint(d)
+            if not self.args.passwords:
+                return
             for password in self.args.passwords:
                 for container in safe.open_containers(password):
                     print

@@ -640,6 +640,7 @@ class ElGamalSafe(Safe):
         """ Find slices that are opened by base key `key' """
         symmkey_hash = self.kd([self._cipherstream_key(key)],
                             length=self.cipher.blocksize)
+        # TODO parallelize this
         for index in xrange(self.nblocks):
             try:
                 pt = self._eg_decrypt_block(key, index)
@@ -691,6 +692,8 @@ class ElGamalSafe(Safe):
     def _slice_size_from_bytes(self, s):
         return self._slice_size_struct.unpack(s)[0]
 
+    # TODO if we use a cipherstream in counter block mode, then we can
+    #      slices on multiple cores.
     def _cipherstream_key(self, key):
         return self.kd([key, KD_SYMM], length=self.cipher.keysize)
     def _cipherstream(self, key, iv):

@@ -60,6 +60,7 @@ class TestPSafe3(unittest.TestCase):
                           pol.importers.psafe3.load,
                           StringIO.StringIO(s), 'test')
     def test_psafe3_load(self):
+        self.maxDiff = None
         self.assertEqual(pol.importers.psafe3.load(StringIO.StringIO(TEST_SAFE),
                             'test'),
             ({'last-save': datetime(2013, 4, 3, 11, 11, 50),

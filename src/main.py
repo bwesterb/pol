@@ -46,6 +46,8 @@ class Program(object):
         p_init.add_argument('--passwords', '-p', nargs='+', metavar='PW',
                     help='Passwords for containers as normally input '+
                             'interactively')
+        p_init.add_argument('--i-know-its-unsafe', action='store_true',
+                    help='Required for obviously unsafe actions')
         p_init.set_defaults(func=self.cmd_init)
 
         p_list = subparsers.add_parser('list',
@@ -161,6 +163,13 @@ class Program(object):
         return ret
 
     def cmd_init(self):
+        if self.args.rerand_bits < 1025 and not self.args.i_know_its_unsafe:
+            print 'You should now use less than 1025b group parameters.'
+            return -9
+        if self.args.precomputed_gp and not self.args.i_know_its_unsafe:
+            # TODO are 2049 precomputed group parameters safe?
+            print 'You should now use precomputed group parameters.'
+            return -9
         if self.args.passwords:
             interactive = False
             cmdline_pws = list(reversed(self.args.passwords))
@@ -229,7 +238,6 @@ class Program(object):
             print
         if not self.args.precomputed_gp:
             print 'Generating group parameters for this safe. This can take a while ...'
-        # TODO add sanity checks for rerand_bits and nworkers
         # TODO generate group parameters in parallel
         progressbar = pol.progressbar.ProbablisticProgressBar()
         progressbar.start()

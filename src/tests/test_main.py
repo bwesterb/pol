@@ -6,7 +6,8 @@ import pol.main
 class TestMain(unittest.TestCase):
     def setUp(self):
         self.safe = tempfile.NamedTemporaryFile()
-        self.pol('init', '-P', '-p', 'a', 'b', 'c', '-f')
+        self.pol('init', '-P', '-p', 'a', 'b', 'c', '-f',
+                    '--i-know-its-unsafe')
 
     def pol(self, *args):
         ret = pol.main.entrypoint(['-s', self.safe.name] + list(args))

@@ -158,6 +158,7 @@ class Program(object):
             # TODO add a `pol break-lock'
             return -6
         if self.args.profile:
+            yappi.stop()
             yappi.print_stats()
 
         return ret

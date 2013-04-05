@@ -89,7 +89,7 @@ def open(path, readonly=False, progress=None):
         with _builtin_open(path, 'r' if readonly else 'r+') as f:
             safe = Safe.load_from_stream(f)
             yield safe
-            if not readonly:
+            if not readonly and safe.touched:
                 safe.rerandomize(progress=progress)
                 f.seek(0, 0)
                 f.truncate()
@@ -115,6 +115,7 @@ class Safe(object):
         self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
         self.cipher = pol.blockcipher.BlockCipher.setup(
                             self.data['block-cipher'])
+        self._touched = False
 
     def store_to_stream(self, stream):
         """ Stores the Safe to `stream'.
@@ -161,6 +162,14 @@ class Safe(object):
     def trash_freespace(self):
         """ Writes random data to the free space """
         raise NotImplementedError
+
+    @property
+    def touched(self):
+        """ True when the Safe has been changed. """
+        return self._touched
+
+    def touch(self):
+        self._touched = True
 
 class Container(object):
     """ Containers store secrets. """
@@ -355,6 +364,7 @@ class ElGamalSafe(Safe):
                 self.safe._eg_encrypt_block(key, index, ct, randfunc,
                                                 annex=annex)
             self._value = value
+            self.safe.touch()
 
     def __init__(self, data):
         super(ElGamalSafe, self).__init__(data)

@@ -30,6 +30,12 @@ pol /pɵl/ is a password manager with two important features:
 Installation
 ------------
 
+### On Debian Wheezy
+
+    $ apt-get install libgmp3-dev libmcrypt-dev build-essential python-dev \
+                        python-pip
+    $ pip install pop
+
 ### On Ubuntu
 
     $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \

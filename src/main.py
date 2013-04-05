@@ -273,8 +273,8 @@ class Program(object):
     
     def cmd_touch(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
-                           progress=self._rerand_progress()):
-            pass
+                           progress=self._rerand_progress()) as safe:
+            safe.touch()
 
     def cmd_raw(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),

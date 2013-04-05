@@ -164,6 +164,10 @@ class Program(object):
         return ret
 
     def cmd_init(self):
+        if (os.path.exists(os.path.expanduser(self.args.safe))
+                and not self.args.force):
+            print '%s exists.  Use -f to override.' % self.args.safe
+            return -10
         if self.args.rerand_bits < 1025 and not self.args.i_know_its_unsafe:
             print 'You should now use less than 1025b group parameters.'
             return -9
@@ -265,6 +269,7 @@ class Program(object):
                 safe.trash_freespace()
         except pol.safe.SafeAlreadyExistsError:
             print '%s exists.  Use -f to override.' % self.args.safe
+            return -10
     
     def cmd_touch(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),

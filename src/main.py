@@ -19,92 +19,139 @@ import pol.progressbar
 
 class Program(object):
     def parse_args(self, argv):
-        parser = argparse.ArgumentParser()
-        parser.add_argument('--workers', '-w', type=int, metavar='N',
-                    help='Number of workers processes (/threads)')
-        parser.add_argument('--threads', '-t', action='store_true',
-                    help='Use worker threads instead of processes')
-        parser.add_argument('--safe', '-s', type=str, default='~/.pol',
+        # Common
+        parser = argparse.ArgumentParser(add_help=False)
+        g_basic = parser.add_argument_group('basic options')
+        g_basic.add_argument('--safe', '-s', type=str, default='~/.pol',
                             metavar='PATH',
                     help='Path to safe')
-        parser.add_argument('--verbose', '-v', action='count', dest='verbosity',
+        g_basic.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        g_basic.add_argument('--verbose', '-v', action='count',
+                            dest='verbosity',
                     help='Add these to make pol chatty')
-        parser.add_argument('--profile', '-p', action='store_true',
+        g_advanced = parser.add_argument_group('advanced options')
+        g_advanced.add_argument('--workers', '-w', type=int, metavar='N',
+                    help='Number of workers processes (/threads)')
+        g_advanced.add_argument('--threads', '-t', action='store_true',
+                    help='Use worker threads instead of processes')
+        g_advanced.add_argument('--profile', '-p', action='store_true',
                     help='Profile performance of main process')
         subparsers = parser.add_subparsers(title='commands')
 
-        p_init = subparsers.add_parser('init',
+        # pol init
+        p_init = subparsers.add_parser('init', add_help=False,
                     help='Create a new safe')
-        p_init.add_argument('--force', '-f', action='store_true',
+        p_init_b = p_init.add_argument_group('basic options')
+        p_init_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_init_b.add_argument('--force', '-f', action='store_true',
                     help='Remove any existing safe')
-        p_init.add_argument('--rerand-bits', '-R', type=int, default=1025,
+        p_init_a = p_init.add_argument_group('advanced options')
+        p_init_a.add_argument('--rerand-bits', '-R', type=int, default=1025,
                     help='Minimal size in bits of prime used for '+
                             'rerandomization')
-        p_init.add_argument('--precomputed-group-parameters', '-P',
+        p_init_a.add_argument('--precomputed-group-parameters', '-P',
                         action='store_true', dest='precomputed_gp',
                     help='Use precomputed group parameters for rerandomization')
-        p_init.add_argument('--passwords', '-p', nargs='+', metavar='PW',
+        p_init_a.add_argument('--passwords', '-p', nargs='+', metavar='PW',
                     help='Passwords for containers as normally input '+
                             'interactively')
-        p_init.add_argument('--i-know-its-unsafe', action='store_true',
+        p_init_a.add_argument('--i-know-its-unsafe', action='store_true',
                     help='Required for obviously unsafe actions')
         p_init.set_defaults(func=self.cmd_init)
 
-        p_list = subparsers.add_parser('list',
+        # pol list
+        p_list = subparsers.add_parser('list', add_help=False,
                     help='List entries')
-        p_list.add_argument('--password', '-p', metavar='PASSWORD',
+        p_list_b = p_list.add_argument_group('basic options')
+        p_list_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_list_a = p_list.add_argument_group('basic options')
+        p_list_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to list')
         p_list.set_defaults(func=self.cmd_list)
 
-        p_generate = subparsers.add_parser('generate',
+        # pol generate
+        p_generate = subparsers.add_parser('generate', add_help=False,
                     help='Generates and stores a password')
         p_generate.add_argument('key')
-        p_generate.add_argument('--note', '-n')
-        p_generate.add_argument('--no-copy', '-N', action='store_true',
+        p_generate_b = p_generate.add_argument_group('basic options')
+        p_generate_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_generate_b.add_argument('--note', '-n')
+        p_generate_b.add_argument('--no-copy', '-N', action='store_true',
                     help='Do not copy secret to clipboard.')
-        p_generate.add_argument('--password', '-p', metavar='PASSWORD',
+        p_generate_a = p_generate.add_argument_group('advanced options')
+        p_generate_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add password to')
         p_generate.set_defaults(func=self.cmd_generate)
 
-        p_paste = subparsers.add_parser('paste',
+        # pol paste
+        p_paste = subparsers.add_parser('paste', add_help=False,
                     help='Stores a secret from the clipboard')
         p_paste.add_argument('key')
-        p_paste.add_argument('--note', '-n')
-        p_paste.add_argument('--password', '-p', metavar='PASSWORD',
+        p_paste_b = p_paste.add_argument_group('basic options')
+        p_paste_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_paste_b.add_argument('--note', '-n')
+        p_paste_a = p_paste.add_argument_group('advanced options')
+        p_paste_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add secret to')
         p_paste.set_defaults(func=self.cmd_paste)
 
-        p_copy = subparsers.add_parser('copy',
+        # pol copy
+        p_copy = subparsers.add_parser('copy', add_help=False,
                     help='Copies a password to the clipboard')
-        p_copy.add_argument('key')
-        p_copy.add_argument('--password', '-p', metavar='PASSWORD',
+        p_copy_b = p_copy.add_argument_group('basic options')
+        p_copy_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_copy_a = p_copy.add_argument_group('advanced options')
+        p_copy_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to copy secret from')
         p_copy.set_defaults(func=self.cmd_copy)
 
-        p_put = subparsers.add_parser('put',
+        # pol put
+        p_put = subparsers.add_parser('put', add_help=False,
                     help='Stores a secret')
         p_put.add_argument('key')
-        p_put.add_argument('--note', '-n')
-        p_put.add_argument('--secret', '-s',
+        p_put_b = p_put.add_argument_group('basic options')
+        p_put_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_put_b.add_argument('--note', '-n')
+        p_put_b.add_argument('--secret', '-s',
                     help='The secret to store.  If none is specified, reads '+
                          'secret from stdin.')
-        p_put.add_argument('--password', '-p', metavar='PASSWORD',
+        p_put_a = p_put.add_argument_group('advanced options')
+        p_put_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add secret to')
         p_put.set_defaults(func=self.cmd_put)
 
-        p_get = subparsers.add_parser('get',
+        # pol get
+        p_get = subparsers.add_parser('get', add_help=False,
                     help='Write secret to stdout')
         p_get.add_argument('key')
-        p_get.add_argument('--password', '-p', metavar='PASSWORD',
+        p_get_b = p_get.add_argument_group('basic options')
+        p_get_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_get_a = p_get.add_argument_group('advanced options')
+        p_get_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to get secret from')
         p_get.set_defaults(func=self.cmd_get)
 
-        p_touch = subparsers.add_parser('touch',
+        # pol touch
+        p_touch = subparsers.add_parser('touch', add_help=False,
                     help='Rerandomizes blocks')
+        p_touch_b = p_touch.add_argument_group('basic options')
+        p_touch_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
         p_touch.set_defaults(func=self.cmd_touch)
 
-        p_raw = subparsers.add_parser('raw',
+        # pol raw
+        p_raw = subparsers.add_parser('raw', add_help=False,
                     help='Shows raw data of safe')
+        p_raw.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
         p_raw.add_argument('--blocks', '-b', action='store_true',
                     help='Also print raw blocks')
         p_raw.add_argument('--passwords', '-p', nargs='+', metavar='PW',
@@ -112,10 +159,17 @@ class Program(object):
                             'these passwords')
         p_raw.set_defaults(func=self.cmd_raw)
 
-        p_import_psafe3 = subparsers.add_parser('import-psafe3',
+        # pol import-psafe3
+        p_import_psafe3 = subparsers.add_parser('import-psafe3', add_help=False,
                     help='Imports entries from a psafe3 db')
         p_import_psafe3.add_argument('path',
                     help='Path to psafe3 database')
+        p_import_psafe3_b = p_import_psafe3.add_argument_group(
+                                    'basic options')
+        p_import_psafe3_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_import_psafe3_a = p_import_psafe3.add_argument_group(
+                                    'advanced options')
         p_import_psafe3.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to import to')
         p_import_psafe3.add_argument('--psafe3-password', '-P',

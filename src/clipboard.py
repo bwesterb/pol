@@ -6,9 +6,6 @@ import subprocess
 
 l = logging.getLogger(__name__)
 
-# TODO support Linux
-# TODO support Windows
-
 if sys.platform == 'darwin':
     # Mac OS X
     available = True
@@ -22,10 +19,21 @@ if sys.platform == 'darwin':
     def paste():
         return subprocess.check_output(['pbpaste'])
 else:
-    available = False
+    import Tkinter
+    def clear():
+        tk = Tkinter.Tk()
+        tk.withdraw()
+        tk.clipboard_clear()
+        tk.destroy()
     def copy(s):
-        raise NotImplementedError
-    def clear(s):
-        raise NotImplementedError
-    def paste(s):
-        raise NotImplementedError
+        tk = Tkinter.Tk()
+        tk.withdraw()
+        tk.clipboard_clear()
+        tk.clipboard_append(s)
+        tk.destroy()
+    def paste():
+        tk = Tkinter.Tk()
+        tk.withdraw()
+        ret = tk.clipboard_get()
+        tk.destroy()
+        return ret

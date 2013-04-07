@@ -103,6 +103,7 @@ class Program(object):
         # pol copy
         p_copy = subparsers.add_parser('copy', add_help=False,
                     help='Copies a password to the clipboard')
+        p_copy.add_argument('key')
         p_copy_b = p_copy.add_argument_group('basic options')
         p_copy_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')

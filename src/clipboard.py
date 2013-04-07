@@ -19,21 +19,35 @@ if sys.platform == 'darwin':
     def paste():
         return subprocess.check_output(['pbpaste'])
 else:
-    import Tkinter
-    def clear():
-        tk = Tkinter.Tk()
-        tk.withdraw()
-        tk.clipboard_clear()
-        tk.destroy()
-    def copy(s):
-        tk = Tkinter.Tk()
-        tk.withdraw()
-        tk.clipboard_clear()
-        tk.clipboard_append(s)
-        tk.destroy()
-    def paste():
-        tk = Tkinter.Tk()
-        tk.withdraw()
-        ret = tk.clipboard_get()
-        tk.destroy()
-        return ret
+    try:
+        import Tkinter
+        got_tkinter = True
+    except ImportError:
+        got_tkinter = False
+    if got_tkinter:
+        available = True
+        def clear():
+            tk = Tkinter.Tk()
+            tk.withdraw()
+            tk.clipboard_clear()
+            tk.destroy()
+        def copy(s):
+            tk = Tkinter.Tk()
+            tk.withdraw()
+            tk.clipboard_clear()
+            tk.clipboard_append(s)
+            tk.destroy()
+        def paste():
+            tk = Tkinter.Tk()
+            tk.withdraw()
+            ret = tk.clipboard_get()
+            tk.destroy()
+            return ret
+    else:
+        available = False
+        def copy(s):
+            raise NotImplementedError
+        def paste():
+            raise NotImplementedError
+        def clear():
+            raise NotImplementedError

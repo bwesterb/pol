@@ -282,10 +282,12 @@ class ElGamalSafe(Safe):
             if not self.secret_data:
                 raise MissingKey
             if not hasattr(self.main_data.entries, 'append'):
-                self.main_data.entries = list(self.main_data.entries)
+                self.main_data = self.main_data._replace(
+                        entries=self.main_data.entries)
             self.main_data.entries.append((key, note))
             if not hasattr(self.secret_data.entries, 'append'):
-                self.secret_data.entries = list(self.secret_data.entries)
+                self.secret_data = self.secret_data._replace(
+                        entries=self.secret_data.entries)
             self.secret_data.entries.append(secret)
         @property
         def can_add(self):

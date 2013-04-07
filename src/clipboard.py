@@ -22,7 +22,10 @@ else:
     try:
         import Tkinter
         got_tkinter = True
-    except ImportError:
+        tk = Tkinter.Tk()
+        tk.withdraw()
+        tk.destroy()
+    except:
         got_tkinter = False
     if got_tkinter:
         available = True

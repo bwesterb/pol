@@ -34,7 +34,7 @@ Installation
 
     $ apt-get install libgmp3-dev libmcrypt-dev build-essential python-dev \
                         python-pip
-    $ pip install pop
+    $ pip install pol
 
 ### On Ubuntu
 

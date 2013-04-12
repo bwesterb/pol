@@ -12,6 +12,7 @@ install_requires = [
     'yappi >=0.62',          #      ibidem
     'python-mcrypt >=1.1',   #      ibidem
     'lockfile >=0.8',        #      ibidem
+    'seccure >=0.1.1',
         ]
 
 if sys.version_info < (2, 7):

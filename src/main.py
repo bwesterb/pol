@@ -236,7 +236,7 @@ class Program(object):
         else:
             interactive = True
         if interactive:
-            print "You are about to create a new safe.  A can have up to six"
+            print "You are about to create a new safe.  A safe can have up to six"
             print "separate containers to store your secrets.  A container is"
             print "accessed by one of its passwords.  Without one of its passwords,"
             print "you cannot prove the existence of a container."

@@ -54,7 +54,7 @@ First, we install pol.
 Then, create a new safe with `pol init`.
 
     $ pol init
-    You are about to create a new safe.  A can have up to six
+    You are about to create a new safe.  A safe can have up to six
     separate containers to store your secrets.  A container is
     accessed by one of its passwords.  Without one of its passwords,
     you cannot prove the existence of a container.

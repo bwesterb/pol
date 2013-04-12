@@ -11,6 +11,7 @@ import multiprocessing
 
 import pol.blockcipher
 import pol.parallel
+import pol.envelope
 import pol.elgamal
 import pol.ks
 import pol.kd
@@ -111,8 +112,11 @@ class Safe(object):
             raise SafeFormatError("Missing `key-derivation' attribute")
         if 'block-cipher' not in self.data:
             raise SafeFormatError("Missing `block-cipher' attribute")
+        if 'envelope' not in self.data:
+            raise SafeFormatError("Missing `envelope' attribute")
         self.ks = pol.ks.KeyStretching.setup(self.data['key-stretching'])
         self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
+        self.envelope = pol.envelope.Envelope.setup(self.data['envelope'])
         self.cipher = pol.blockcipher.BlockCipher.setup(
                             self.data['block-cipher'])
         self._touched = False
@@ -228,6 +232,7 @@ class ElGamalSafe(Safe):
     class Container(Container):
         def __init__(self, safe, full_key, list_key, append_key, main_slice,
                         append_slice, main_data, append_data, secret_data):
+            # TODO move append_data entries to secret_data
             self.safe = safe
             self.full_key = full_key
             self.list_key = list_key
@@ -264,31 +269,49 @@ class ElGamalSafe(Safe):
                 append_pt = msgpack.dumps(self.append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
         def list(self):
-            if self.main_data:
-                return self.main_data.entries
-            raise MissingKey
-        def get(self, key):
-            if self.main_data:
-                for i, entry in enumerate(self.main_data.entries):
-                    if entry[0] != key:
-                        continue
-                    if self.secret_data:
-                        yield (entry[0], entry[1], self.secret_data.entries[i])
-                    else:
-                        yield (entry[0], entry[1])
-            raise MissingKey
-        def add(self, key, note, secret):
-            # TODO implement append without full access
-            if not self.secret_data:
+            if not self.main_data:
                 raise MissingKey
-            if not hasattr(self.main_data.entries, 'append'):
-                self.main_data = self.main_data._replace(
-                        entries=list(self.main_data.entries))
-            self.main_data.entries.append((key, note))
-            if not hasattr(self.secret_data.entries, 'append'):
-                self.secret_data = self.secret_data._replace(
-                        entries=list(self.secret_data.entries))
-            self.secret_data.entries.append(secret)
+            ret = []
+            if self.main_data:
+                ret.extend(self.main_data.entries)
+            if self.secret_data and self.append_data:
+                for raw_entry in self.append_data.entries:
+                    ret.append(msgpack.loads(self.safe.envelope.open(raw_entry,
+                                        self.secret_data.privkey))[:2])
+            return ret
+        def get(self, key):
+            if not self.main_data:
+                raise MissingKing
+            for i, entry in enumerate(self.main_data.entries):
+                if entry[0] != key:
+                    continue
+                if self.secret_data:
+                    yield (entry[0], entry[1], self.secret_data.entries[i])
+                else:
+                    yield (entry[0], entry[1])
+            if self.secret_data and self.append_data:
+                for raw_entry in self.append_data.entries:
+                    yield msgpack.loads(self.safe.envelope.open(raw_entry,
+                                            self.secret_data.privkey))
+        def add(self, key, note, secret):
+            if self.secret_data:
+                if not hasattr(self.main_data.entries, 'append'):
+                    self.main_data = self.main_data._replace(
+                            entries=list(self.main_data.entries))
+                self.main_data.entries.append((key, note))
+                if not hasattr(self.secret_data.entries, 'append'):
+                    self.secret_data = self.secret_data._replace(
+                            entries=list(self.secret_data.entries))
+                self.secret_data.entries.append(secret)
+            elif self.append_data:
+                if not hasattr(self.append_data.entries, 'append'):
+                    self.append_data = self.append_data._replace(
+                            entries=list(self.append_data.entries))
+                self.append_data.entries.append(self.safe.envelope.seal(
+                                    msgpack.dumps([key, note, secret]),
+                                    self.append_data.pubkey))
+            else:
+                raise MissingKing
         @property
         def can_add(self):
             return bool(self.secret_data)
@@ -415,9 +438,9 @@ class ElGamalSafe(Safe):
                                   "`group-params' allow")
     @staticmethod
     def generate(n_blocks=1024, block_index_size=2, slice_size=4,
-                    ks=None, kd=None, blockcipher=None, gp_bits=1025,
-                    precomputed_gp=False, nworkers=None, use_threads=False,
-                    progress=None):
+                    ks=None, kd=None, envelope=None, blockcipher=None,
+                    gp_bits=1025, precomputed_gp=False, nworkers=None,
+                    use_threads=False, progress=None):
         """ Creates a new safe. """
         # TODO check whether block_index_size, slice_size, gp_bits and
         #      n_blocks are sane.
@@ -434,6 +457,8 @@ class ElGamalSafe(Safe):
             kd = pol.kd.KeyDerivation.setup()
         if blockcipher is None:
             cipher = pol.blockcipher.BlockCipher.setup()
+        if envelope is None:
+            envelope = pol.envelope.Envelope.setup()
         # Now, calculate the useful bytes per block
         bytes_per_block = (gp_bits - 1) / 8
         bytes_per_block = bytes_per_block - bytes_per_block % cipher.blocksize
@@ -447,6 +472,7 @@ class ElGamalSafe(Safe):
                  'group-params': [x.binary() for x in gp],
                  'key-stretching': ks.params,
                  'key-derivation': kd.params,
+                 'envelope': envelope.params,
                  'block-cipher': cipher.params,
                  'blocks': [['','','',''] for i in xrange(n_blocks)]})
         # Mark all blocks as free
@@ -508,6 +534,7 @@ class ElGamalSafe(Safe):
         # TODO check append_slice_size makes sense
         append_slice_size = 5
         append_slice, append_data = None, None
+        pubkey, privkey = None, None
         if randfunc is None:
             randfunc = Crypto.Random.new().read
         if len(self.free_blocks) < nblocks:
@@ -527,6 +554,10 @@ class ElGamalSafe(Safe):
             as_append = self._new_slice(1)
         if list_password:
             as_list = self._new_slice(1)
+        # Generate envelope keypair
+        if append_slice:
+            l.debug('new container: generating envelope keypair')
+            pubkey, privkey = self.envelope.generate_keypair()
         # Generate the keys of the container
         l.debug('new_container: deriving keys')
         full_key = randfunc(self.kd.size)
@@ -560,7 +591,7 @@ class ElGamalSafe(Safe):
         # Initialize main and append slices
         if append_slice:
             append_data = append_tuple(magic=APPEND_SLICE_MAGIC,
-                                 pubkey=None, # TODO
+                                 pubkey=pubkey,
                                  entries=[])
         main_data = main_tuple(magic=MAIN_SLICE_MAGIC,
                                append_index=(append_slice.first_index
@@ -568,7 +599,7 @@ class ElGamalSafe(Safe):
                                entries=[],
                                iv=None,
                                secrets=None)
-        secret_data = secret_tuple(privkey=None, # TODO
+        secret_data = secret_tuple(privkey=privkey,
                                    entries=[])
         container =  ElGamalSafe.Container(self, full_key, list_key, append_key,
                         main_slice, append_slice, main_data, append_data,

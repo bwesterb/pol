@@ -23,7 +23,7 @@ class TestGroupParametersBase(unittest.TestCase):
 class TestPrecomputedGroupParameters(TestGroupParametersBase):
     def _test_precomputed_parameters(self, bits):
         self._test_gp(pol.elgamal.precomputed_group_params(bits), bits)
-for bits in (1025, 2049):
+for bits in (1025, 2049, 4097):
     def ch(bits): return lambda self: self._test_precomputed_parameters(bits)
     setattr(TestPrecomputedGroupParameters, 'test_%s' % bits, ch(bits))
 

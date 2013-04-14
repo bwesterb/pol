@@ -67,7 +67,7 @@ class SeccureEnvelope(Envelope):
         pubkey = self.curve.passphrase_to_pubkey(privkey).to_string()
         return (pubkey, privkey)
     def seal(self, msg, pubkey):
-        p = self.curve.point_from_string(pubkey)
+        p = self.curve.pubkey_from_string(pubkey)
         return p.encrypt(msg)
     def open(self, ciphertext, privkey):
         p = self.curve.passphrase_to_privkey(privkey)

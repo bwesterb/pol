@@ -329,11 +329,15 @@ class Program(object):
     
     def cmd_touch(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             safe.touch()
 
     def cmd_raw(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             d = dict(safe.data)
             if not self.args.blocks:
@@ -355,6 +359,8 @@ class Program(object):
 
     def cmd_get(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             found_one = False
             entries = []
@@ -392,6 +398,8 @@ class Program(object):
             print 'Use `pol get\' to print secrets.'
             return -7
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             found_one = False
             entries = []
@@ -457,6 +465,8 @@ class Program(object):
         return self._store(pw)
     def _store(self, pw):
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             found_one = False
             stored = False
@@ -484,6 +494,8 @@ class Program(object):
         found_one = False
         stored = False
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             for container in safe.open_containers(
                     self.args.password if self.args.password
@@ -518,6 +530,8 @@ class Program(object):
 
     def cmd_list(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             found_one = False
             for container in safe.open_containers(
@@ -551,6 +565,8 @@ class Program(object):
 
         # Secondly, find a container
         with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
                            progress=self._rerand_progress()) as safe:
             found_one = False
             the_container = None

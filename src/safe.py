@@ -259,19 +259,19 @@ class ElGamalSafe(Safe):
                 sbs = self.safe.cipher.blocksize
                 iv = randfunc(sbs)
                 cipherstream = self.safe._cipherstream(self.full_key, iv)
-                secrets_pt = msgpack.dumps(self.secret_data)
+                secrets_pt = pol.serialization.son_to_string(self.secret_data)
                 secrets_ct = cipherstream.encrypt(secrets_pt)
                 self.main_data = self.main_data._replace(iv=iv,
                                         secrets=secrets_ct)
             # Write main slice
             if self.main_data:
                 assert self.list_key and self.main_slice
-                main_pt = msgpack.dumps(self.main_data)
+                main_pt = pol.serialization.son_to_string(self.main_data)
                 self.main_slice.store(self.list_key, main_pt, annex=annex)
             # Write append slice
             if self.append_data:
                 assert self.append_key and self.append_slice
-                append_pt = msgpack.dumps(self.append_data)
+                append_pt = pol.serialization.son_to_string(self.append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
             self.unsaved_changes = False
         def list(self):
@@ -282,7 +282,8 @@ class ElGamalSafe(Safe):
                 ret.extend(self.main_data.entries)
             if self.secret_data and self.append_data:
                 for raw_entry in self.append_data.entries:
-                    ret.append(msgpack.loads(self.safe.envelope.open(raw_entry,
+                    ret.append(pol.serialization.string_to_son(
+                                self.safe.envelope.open(raw_entry,
                                         self.secret_data.privkey))[:2])
             return ret
         def get(self, key):
@@ -297,24 +298,16 @@ class ElGamalSafe(Safe):
                     yield (entry[0], entry[1])
             if self.secret_data and self.append_data:
                 for raw_entry in self.append_data.entries:
-                    yield msgpack.loads(self.safe.envelope.open(raw_entry,
+                    yield son.serialization.string_to_son(
+                                self.safe.envelope.open(raw_entry,
                                             self.secret_data.privkey))
         def add(self, key, note, secret):
             if self.secret_data:
-                if not hasattr(self.main_data.entries, 'append'):
-                    self.main_data = self.main_data._replace(
-                            entries=list(self.main_data.entries))
                 self.main_data.entries.append((key, note))
-                if not hasattr(self.secret_data.entries, 'append'):
-                    self.secret_data = self.secret_data._replace(
-                            entries=list(self.secret_data.entries))
                 self.secret_data.entries.append(secret)
             elif self.append_data:
-                if not hasattr(self.append_data.entries, 'append'):
-                    self.append_data = self.append_data._replace(
-                            entries=list(self.append_data.entries))
                 self.append_data.entries.append(self.safe.envelope.seal(
-                                    msgpack.dumps([key, note, secret]),
+                        pol.serialization.son_to_string([key, note, secret]),
                                     self.append_data.pubkey))
             else:
                 raise MissingKey
@@ -500,7 +493,8 @@ class ElGamalSafe(Safe):
         access_key = self.ks(password)
         l.debug('open_containers: Searching for access slice ...')
         for sl in self._find_slices(access_key):
-            access_data = access_tuple(*msgpack.loads(sl.value))
+            access_data = access_tuple(*pol.serialization.string_to_son(
+                                sl.value))
             if access_data.magic != AS_MAGIC:
                 l.warn('Wrong magic on access slice')
                 continue
@@ -534,25 +528,28 @@ class ElGamalSafe(Safe):
             list_key = self.kd([full_key, KD_LIST])
         if list_key:
             main_slice = self._load_slice(list_key, main_index)
-            main_data = main_tuple(*msgpack.loads(main_slice.value))
+            main_data = main_tuple(*pol.serialization.string_to_son(
+                                    main_slice.value))
             append_key = self.kd([list_key, KD_APPEND])
             append_index = main_data.append_index
         # Now, read secret data if we have access
         if full_key:
             cipherstream = self._cipherstream(full_key, main_data.iv)
-            secret_data = secret_tuple(*msgpack.loads(
+            secret_data = secret_tuple(*pol.serialization.string_to_son(
                             cipherstream.decrypt(main_data.secrets)))
         # Read the append-data, if it exists
         moved_entries = False
         if append_index:
             append_slice = self._load_slice(append_key, append_index)
-            append_data = append_tuple(*msgpack.loads(append_slice.value))
+            append_data = append_tuple(*pol.serialization.string_to_son(
+                                    append_slice.value))
             # Move entries from append-data to the secret data
             if append_data.entries and secret_data:
                 new_entries = []
                 for raw_entry in append_data.entries:
-                    new_entries.append(msgpack.loads(self.envelope.open(
-                                    raw_entry, secret_data.privkey)))
+                    new_entries.append(pol.serialization.string_to_son(
+                                 self.envelope.open(raw_entry,
+                                                    secret_data.privkey)))
                 if new_entries:
                     moved_entries = True
                     if on_move_append_entries:
@@ -612,19 +609,19 @@ class ElGamalSafe(Safe):
             as_list_key = self.ks(list_password)
         # Create access slices
         l.debug('new_container: creating access slices')
-        as_full.store(as_full_key, msgpack.dumps(
+        as_full.store(as_full_key, pol.serialization.son_to_string(
                     access_tuple(magic=AS_MAGIC,
                                  type=AS_FULL,
                                  index=main_slice.first_index,
                                  key=full_key)), annex=True)
         if append_password:
-            as_append.store(as_append_key, msgpack.dumps(
+            as_append.store(as_append_key, pol.serialization.son_to_string(
                     access_tuple(magic=AS_MAGIC,
                                  type=AS_APPEND,
                                  index=append_slice.first_index,
                                  key=append_key)), annex=True)
         if list_password:
-            as_list.store(as_list_key, msgpack.dumps(
+            as_list.store(as_list_key, pol.serialization.son_to_string(
                     access_tuple(magic=AS_MAGIC,
                                  type=AS_LIST,
                                  index=main_slice.first_index,

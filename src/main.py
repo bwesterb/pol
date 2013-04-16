@@ -14,6 +14,7 @@ import sys
 import pol.safe
 import pol.passgen
 import pol.terminal
+import pol.humanize
 import pol.clipboard
 import pol.progressbar
 
@@ -333,7 +334,7 @@ class Program(object):
 
     def cmd_raw(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
-                           readonly=True) as safe:
+                           progress=self._rerand_progress()) as safe:
             d = dict(safe.data)
             if not self.args.blocks:
                 del d['blocks']
@@ -341,7 +342,8 @@ class Program(object):
             if not self.args.passwords:
                 return
             for password in self.args.passwords:
-                for container in safe.open_containers(password):
+                for container in safe.open_containers(password,
+                        on_move_append_entries=self._on_move_append_entries):
                     print
                     print 'Container %s' % container.id
                     if container.main_data:
@@ -353,12 +355,13 @@ class Program(object):
 
     def cmd_get(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
-                           readonly=True) as safe:
+                           progress=self._rerand_progress()) as safe:
             found_one = False
             entries = []
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter password: ')):
+                            else getpass.getpass('Enter password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 try:
@@ -389,12 +392,13 @@ class Program(object):
             print 'Use `pol get\' to print secrets.'
             return -7
         with pol.safe.open(os.path.expanduser(self.args.safe),
-                           readonly=True) as safe:
+                           progress=self._rerand_progress()) as safe:
             found_one = False
             entries = []
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter password: ')):
+                            else getpass.getpass('Enter password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 try:
@@ -458,7 +462,8 @@ class Program(object):
             stored = False
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: ')):
+                            else getpass.getpass('Enter (append-)password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 try:
@@ -482,7 +487,8 @@ class Program(object):
                            progress=self._rerand_progress()) as safe:
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: ')):
+                            else getpass.getpass('Enter (append-)password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 try:
@@ -512,11 +518,12 @@ class Program(object):
 
     def cmd_list(self):
         with pol.safe.open(os.path.expanduser(self.args.safe),
-                           readonly=True) as safe:
+                           progress=self._rerand_progress()) as safe:
             found_one = False
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (list-)password: ')):
+                            else getpass.getpass('Enter (list-)password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 else:
@@ -549,7 +556,8 @@ class Program(object):
             the_container = None
             for container in safe.open_containers(
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: ')):
+                            else getpass.getpass('Enter (append-)password: '),
+                        on_move_append_entries=self._on_move_append_entries):
                 if not found_one:
                     found_one = True
                 if container.can_add:
@@ -590,6 +598,9 @@ class Program(object):
             if v == 1.0:
                 progressbar.end()
         return progress
+    def _on_move_append_entries(self, entries):
+        sys.stderr.write("  moved entries into container: %s\n" % (
+                pol.humanize.join([entry[0] for entry in entries])))
 
 def entrypoint(argv=None):
     if argv is None:

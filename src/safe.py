@@ -90,11 +90,13 @@ def open(path, readonly=False, progress=None):
         with _builtin_open(path, 'r' if readonly else 'r+') as f:
             safe = Safe.load_from_stream(f)
             yield safe
-            if not readonly and safe.touched:
-                safe.rerandomize(progress=progress)
-                f.seek(0, 0)
-                f.truncate()
-                safe.store_to_stream(f)
+            if not readonly:
+                safe.autosave_containers()
+                if safe.touched:
+                    safe.rerandomize(progress=progress)
+                    f.seek(0, 0)
+                    f.truncate()
+                    safe.store_to_stream(f)
     except lockfile.AlreadyLocked:
         raise SafeLocked
     finally:
@@ -166,6 +168,10 @@ class Safe(object):
     def trash_freespace(self):
         """ Writes random data to the free space """
         raise NotImplementedError
+
+    def autosave_containers(self):
+        """ Autosave containers """
+        pass
 
     @property
     def touched(self):
@@ -242,6 +248,7 @@ class ElGamalSafe(Safe):
             self.main_data = main_data
             self.append_data = append_data
             self.secret_data = secret_data
+            self.unsaved_changes = False
         def save(self, randfunc=None, annex=False):
             if randfunc is None:
                 randfunc = Crypto.Random.new().read
@@ -268,6 +275,7 @@ class ElGamalSafe(Safe):
                 assert self.append_key and self.append_slice
                 append_pt = msgpack.dumps(self.append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
+            self.unsaved_changes = False
         def list(self):
             if not self.main_data:
                 raise MissingKey
@@ -311,7 +319,8 @@ class ElGamalSafe(Safe):
                                     msgpack.dumps([key, note, secret]),
                                     self.append_data.pubkey))
             else:
-                raise MissingKing
+                raise MissingKey
+            self.unsaved_changes = True
         @property
         def can_add(self):
             return bool(self.secret_data)
@@ -319,6 +328,8 @@ class ElGamalSafe(Safe):
         def id(self):
             return (self.append_slice.first_index if self.append_slice else
                             self.main_slice.first_index)
+        def touch(self):
+            self.unsaved_changes = True
 
     class Slice(object):
         def __init__(self, safe, first_index, indices, value=None):
@@ -399,6 +410,7 @@ class ElGamalSafe(Safe):
         super(ElGamalSafe, self).__init__(data)
         # Check if `data' makes sense.
         self.free_blocks = set([])
+        self.auto_save_containers = []
         for attr in ('group-params', 'n-blocks', 'blocks', 'block-index-size',
                             'slice-size'):
             if not attr in data:
@@ -479,8 +491,12 @@ class ElGamalSafe(Safe):
         safe.mark_free(xrange(n_blocks))
         return safe
 
-    def open_containers(self, password):
-        """ Opens a container. """
+    def open_containers(self, password, autosave=True,
+                            on_move_append_entries=None):
+        """ Opens a container.
+
+            If there are entries in the append-slice, `on_move_append_entries'
+            will be called with the entries as only argument. """
         l.debug('open_containers: Stretching key')
         access_key = self.ks(password)
         l.debug('open_containers: Searching for access slice ...')
@@ -491,12 +507,18 @@ class ElGamalSafe(Safe):
                 continue
             l.debug('open_containers:  found one @%s; type %s',
                             sl.first_index, access_data.type)
-            yield self._open_container_with_access_data(access_data)
+            container = self._open_container_with_access_data(
+                            access_data, on_move_append_entries)
+            if autosave:
+                self.auto_save_containers.append(container)
+            yield container
 
-    def _open_container_with_access_data(self, access_data):
+    def _open_container_with_access_data(self, access_data,
+                        on_move_append_entries=None):
         (full_key, list_key, append_key, main_slice, append_slice, main_data,
                 append_data, secret_data, append_index, main_index) = (None,
                         None, None, None, None, None, None, None, None, None)
+        # First, derive keys from the current key
         if access_data.type == AS_APPEND:
             append_key = access_data.key
             append_index = access_data.index
@@ -516,16 +538,36 @@ class ElGamalSafe(Safe):
             main_data = main_tuple(*msgpack.loads(main_slice.value))
             append_key = self.kd([list_key, KD_APPEND])
             append_index = main_data.append_index
+        # Now, read secret data if we have access
         if full_key:
             cipherstream = self._cipherstream(full_key, main_data.iv)
             secret_data = secret_tuple(*_msgpack_loads_padded(
                             cipherstream.decrypt(main_data.secrets)))
+        # Read the append-data, if it exists
+        moved_entries = False
         if append_index:
             append_slice = self._load_slice(append_key, append_index)
             append_data = append_tuple(*msgpack.loads(append_slice.value))
-        return ElGamalSafe.Container(self, full_key, list_key, append_key,
+            # Move entries from append-data to the secret data
+            if append_data.entries and secret_data:
+                new_entries = []
+                for raw_entry in append_data.entries:
+                    new_entries.append(msgpack.loads(self.envelope.open(
+                                    raw_entry, secret_data.privkey)))
+                if new_entries:
+                    moved_entries = True
+                    if on_move_append_entries:
+                        on_move_append_entries(new_entries)
+                append_data = append_data._replace(entries=[])
+                for entry in new_entries:
+                    secret_data.entries.append(entry[2])
+                    main_data.entries.append(entry[:2])
+        container = ElGamalSafe.Container(self, full_key, list_key, append_key,
                     main_slice, append_slice, main_data, append_data,
                     secret_data)
+        if moved_entries:
+            container.touch()
+        return container
 
     def new_container(self, password, list_password=None, append_password=None,
                                 nblocks=170, randfunc=None):
@@ -645,6 +687,13 @@ class ElGamalSafe(Safe):
         l.debug('trash_freespace: trashing')
         sl = self._new_slice(len(self.free_blocks))
         sl.trash()
+
+    def autosave_containers(self):
+        for container in self.auto_save_containers:
+            if not container:
+                continue
+            if container.unsaved_changes:
+                container.save()
 
     def rerandomize(self, nworkers=None, use_threads=False, progress=None):
         """ Rerandomizes blocks: they will still decrypt to the same

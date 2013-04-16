@@ -18,6 +18,7 @@ import gmpy
 
 import pol.parallel
 import pol.progressbar
+import pol.serialization
 
 group_parameters = collections.namedtuple('group_parameters', ('p', 'g'))
 
@@ -112,7 +113,7 @@ def precomputed_group_params(bits=1025):
         NOTE For small group parameters this is unsafe. """
     if not bits in PRECOMPUTED_GROUP_PARAMS:
         raise ValueError("No precomputed group parameters of %s bits" % bits)
-    p, g = [gmpy.mpz(binascii.unhexlify(x), 256)
+    p, g = [pol.serialization.string_to_number(binascii.unhexlify(x))
                 for x in PRECOMPUTED_GROUP_PARAMS[bits]]
     return group_parameters(p=p, g=g)
 
@@ -159,11 +160,10 @@ def generate_group_params(bits=1025, nworkers=None, use_threads=False,
 def pubkey_from_privkey(privkey, gp):
     return pow(gp.g, privkey, gp.p)
 def string_to_group(s):
-    # TODO is mpz(..., 256) stable?
-    return gmpy.mpz(s+'\0', 256)
+    return pol.serialization.string_to_number(s)
 def group_to_string(n, size):
     # TODO is mpz.binary() stable?
-    return n.binary()[:size].ljust(size, '\0')
+    return pol.serialization.number_to_string(n).ljust(size, '\0')
 def decrypt(c1, c2, privkey, gp, size):
     s = pow(c1, privkey, gp.p)
     invs = gmpy.invert(s, gp.p)

@@ -9,6 +9,7 @@ import contextlib
 import collections
 import multiprocessing
 
+import pol.serialization
 import pol.blockcipher
 import pol.parallel
 import pol.envelope
@@ -478,7 +479,8 @@ class ElGamalSafe(Safe):
                  'bytes-per-block': bytes_per_block,
                  'block-index-size': block_index_size,
                  'slice-size': slice_size,
-                 'group-params': [x.binary() for x in gp],
+                 'group-params': [pol.serialization.number_to_string(x)
+                                         for x in gp],
                  'key-stretching': ks.params,
                  'key-derivation': kd.params,
                  'envelope': envelope.params,
@@ -672,7 +674,8 @@ class ElGamalSafe(Safe):
     def group_params(self):
         """ The group parameters. """
         return pol.elgamal.group_parameters(
-                    *[gmpy.mpz(x, 256) for x in self.data['group-params']])
+                    *[pol.serialization.string_to_number(x)
+                        for x in self.data['group-params']])
 
     def mark_free(self, indices):
         """ Marks the given indices as free. """
@@ -799,10 +802,10 @@ class ElGamalSafe(Safe):
         return self.kd([key, KD_MARKER, self._index_to_bytes(index)])
     def _privkey_for_block(self, key, index):
         """ Returns the elgamal private key for the block `index' """
-        # TODO we should not assume how mpz.binary() works
         # TODO is it safe to reduce the size of privkey by this much?
-        return gmpy.mpz(self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
-                            length=self.bytes_per_block) + '\0', 256)
+        return pol.serialization.string_to_number(
+                    self.kd([key, KD_ELGAMAL, self._index_to_bytes(index)],
+                            length=self.bytes_per_block))
 
     # ElGamal encryption and decryption
     def _eg_decrypt_block(self, key, index):
@@ -812,8 +815,8 @@ class ElGamalSafe(Safe):
             raise WrongKeyError
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
-        c1 = gmpy.mpz(self.data['blocks'][index][0], 256)
-        c2 = gmpy.mpz(self.data['blocks'][index][1], 256)
+        c1 = pol.serialization.string_to_number(self.data['blocks'][index][0])
+        c2 = pol.serialization.string_to_number(self.data['blocks'][index][1])
         return pol.elgamal.decrypt(c1, c2, privkey, gp, self.bytes_per_block)
     def _eg_encrypt_block(self, key, index, s, randfunc, annex=False):
         """ Sets the El-Gamal encrypted content of block `index' to `s'
@@ -826,29 +829,30 @@ class ElGamalSafe(Safe):
             if not annex:
                 raise WrongKeyError
             pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
-            binary_pubkey = pubkey.binary()
+            binary_pubkey = pol.serialization.number_to_string(pubkey)
             self.data['blocks'][index][2] = binary_pubkey
             self.data['blocks'][index][3] = marker
         else:
-            pubkey = gmpy.mpz(self.data['blocks'][index][2], 256)
+            pubkey = pol.serialization.string_to_number(
+                        self.data['blocks'][index][2])
         # TODO is it safe to pick r so much smaller than p?
         c1, c2 = pol.elgamal.encrypt(s, pubkey, gp,
                                      self.bytes_per_block, randfunc)
-        self.data['blocks'][index][0] = c1.binary()
-        self.data['blocks'][index][1] = c2.binary()
+        self.data['blocks'][index][0] = pol.serialization.number_to_string(c1)
+        self.data['blocks'][index][1] = pol.serialization.number_to_string(c2)
 
 def _eg_rerandomize_block_initializer(args, kwargs):
     Crypto.Random.atfork()
 def _eg_rerandomize_block(raw_b, g, p):
     """ Rerandomizes raw_b given group parameters g and p. """
     s = random.randint(2, int(p))
-    b = [gmpy.mpz(raw_b[0], 256),
-         gmpy.mpz(raw_b[1], 256),
-         gmpy.mpz(raw_b[2], 256)]
+    b = [pol.serialization.string_to_number(raw_b[0]),
+         pol.serialization.string_to_number(raw_b[1]),
+         pol.serialization.string_to_number(raw_b[2])]
     b[0] = (b[0] * pow(g, s, p)) % p
     b[1] = (b[1] * pow(b[2], s, p)) % p
-    raw_b[0] = b[0].binary()
-    raw_b[1] = b[1].binary()
+    raw_b[0] = pol.serialization.number_to_string(b[0])
+    raw_b[1] = pol.serialization.number_to_string(b[1])
     return raw_b
 
 TYPE_MAP = {'elgamal': ElGamalSafe}

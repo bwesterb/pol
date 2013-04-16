@@ -13,28 +13,28 @@ class TestAES(unittest.TestCase):
         s = self.c.new_stream('Thirtytwo bytes key for AES-256!',
                                             'Sixteen byte IV!')
         self.assertEqual(binascii.hexlify(s.encrypt('1234567890123456')),
-                                        'aa26bc0f386aa09ab2d867d2aac7507a')
+                                        '6cef07fd1ac23d4b6f7429871bb99d8e')
         self.assertEqual(binascii.hexlify(s.encrypt('1234567890123456')),
-                                        'c192580459cc1fa9b03c3ee7babe93dd')
+                                        '2f3f54eba982349b503152c6ec848886')
         s = self.c.new_stream('Thirtytwo bytes key for AES-256!',
                                             'Sixteen byte IV!')
         self.assertEqual(binascii.hexlify(s.encrypt('1234567890123456'*2)),
-                                        'aa26bc0f386aa09ab2d867d2aac7507a'+
-                                        'c192580459cc1fa9b03c3ee7babe93dd')
+                                        '6cef07fd1ac23d4b6f7429871bb99d8e'+
+                                        '2f3f54eba982349b503152c6ec848886')
     def test_decrypt(self):
         s = self.c.new_stream('Thirtytwo bytes key for AES-256!',
                                             'Sixteen byte IV!')
         self.assertEqual(s.decrypt(binascii.unhexlify(
-                            'aa26bc0f386aa09ab2d867d2aac7507a')),
+                            '6cef07fd1ac23d4b6f7429871bb99d8e')),
                             '1234567890123456')
         self.assertEqual(s.decrypt(binascii.unhexlify(
-                            'c192580459cc1fa9b03c3ee7babe93dd')),
+                            '2f3f54eba982349b503152c6ec848886')),
                             '1234567890123456')
         s = self.c.new_stream('Thirtytwo bytes key for AES-256!',
                                             'Sixteen byte IV!')
         self.assertEqual(s.decrypt(binascii.unhexlify(
-                            'aa26bc0f386aa09ab2d867d2aac7507a'+
-                            'c192580459cc1fa9b03c3ee7babe93dd')),
+                            '6cef07fd1ac23d4b6f7429871bb99d8e'+
+                            '2f3f54eba982349b503152c6ec848886')),
                             '1234567890123456'*2)
 
 if __name__ == '__main__':

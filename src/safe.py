@@ -259,9 +259,6 @@ class ElGamalSafe(Safe):
                 iv = randfunc(sbs)
                 cipherstream = self.safe._cipherstream(self.full_key, iv)
                 secrets_pt = msgpack.dumps(self.secret_data)
-                if len(secrets_pt) % sbs != 0:
-                    padding = sbs - (len(secrets_pt) % sbs)
-                    secrets_pt += '\0'*padding
                 secrets_ct = cipherstream.encrypt(secrets_pt)
                 self.main_data = self.main_data._replace(iv=iv,
                                         secrets=secrets_ct)
@@ -541,7 +538,7 @@ class ElGamalSafe(Safe):
         # Now, read secret data if we have access
         if full_key:
             cipherstream = self._cipherstream(full_key, main_data.iv)
-            secret_data = secret_tuple(*_msgpack_loads_padded(
+            secret_data = secret_tuple(*msgpack.loads(
                             cipherstream.decrypt(main_data.secrets)))
         # Read the append-data, if it exists
         moved_entries = False
@@ -853,12 +850,5 @@ def _eg_rerandomize_block(raw_b, g, p):
     raw_b[0] = b[0].binary()
     raw_b[1] = b[1].binary()
     return raw_b
-
-def _msgpack_loads_padded(s):
-    """ The same as msgpack.loads, but does not raise an exception if
-        unread data remains. """
-    unpacker = msgpack.Unpacker()
-    unpacker.feed(s)
-    return unpacker.unpack()
 
 TYPE_MAP = {'elgamal': ElGamalSafe}

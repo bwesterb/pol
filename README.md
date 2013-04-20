@@ -40,11 +40,19 @@ First, we install pol.
                         python-pip
     $ pip install pol
 
+For clipboard support, install tkinter:
+
+    $ apt-get install python-tk
+
 #### On Ubuntu
 
     $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
                         python-pip
     $ pip install pol
+
+For clipboard support, install tkinter:
+
+    $ apt-get install python-tk
 
 #### On Mac with MacPorts
 

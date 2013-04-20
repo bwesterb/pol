@@ -179,6 +179,28 @@ class Program(object):
                     help='Password of psafe3 db to import')
         p_import_psafe3.set_defaults(func=self.cmd_import_psafe3)
 
+        # pol import-keepass
+        p_import_keepass = subparsers.add_parser('import-keepass',
+                        add_help=False,
+                    help='Imports entries from a KeePass 1.x db')
+        p_import_keepass.add_argument('path',
+                    help='Path to KeePass database')
+        p_import_keepass_b = p_import_keepass.add_argument_group(
+                                    'basic options')
+        p_import_keepass_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_import_keepass_b.add_argument('-K', '--keepass-keyfile',
+                            metavar='PATH',
+                    help='Keyfile used to open KeePass database')
+        p_import_keepass_a = p_import_keepass.add_argument_group(
+                                    'advanced options')
+        p_import_keepass_a.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to import to')
+        p_import_keepass_a.add_argument('--keepass-password', '-P',
+                    metavar='PASSWORD',
+                    help='Password of KeePass db to import')
+        p_import_keepass.set_defaults(func=self.cmd_import_keepass)
+
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
@@ -554,6 +576,64 @@ class Program(object):
                     print '  (no list access)'
             if not found_one:
                 print ' No containers found'
+
+    def cmd_import_keepass(self):
+        # First load keepass db
+        import pol.importers.keepass
+        kppwd = (self.args.keepass_password if self.args.keepass_password
+                        else getpass.getpass('Enter password for KeePass db: '))
+        fkeyfile = None
+        if self.args.keepass_keyfile:
+            fkeyfile = open(self.args.keepass_keyfile)
+        try:
+            with open(self.args.path) as f:
+                groups, entries = pol.importers.keepass.load(f, kppwd, fkeyfile)
+        finally:
+            if fkeyfile:
+                fkeyfile.close()
+
+        # Secondly, find a container
+        with pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
+                           progress=self._rerand_progress()) as safe:
+            found_one = False
+            the_container = None
+            for container in safe.open_containers(
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter (append-)password: '),
+                        on_move_append_entries=self._on_move_append_entries):
+                if not found_one:
+                    found_one = True
+                if container.can_add:
+                    the_container = container
+                    break
+            if not found_one:
+                print 'The password did not open any container.'
+                return -1
+            if not the_container:
+                print ('No append access to the containers opened '+
+                            'by this password')
+                return -2
+
+            # Import the entries
+            n_imported = 0
+            for entry in entries:
+                if not entry['uuid'].int:
+                    continue
+                notes = []
+                n_imported += 1
+                if 'notes' in entry and entry['notes']:
+                    notes.append(entry['notes'])
+                if 'username' in entry and entry['username']:
+                    notes.append('user: '+entry['username'])
+                if 'url' in entry and entry['url']:
+                    notes.append('url: '+entry['url'])
+                the_container.add(entry['title'],
+                                  '\n'.join(notes),
+                                  entry['password'])
+            the_container.save()
+            print "%s entries imported" % n_imported
 
     def cmd_import_psafe3(self):
         # First load psafe3 db

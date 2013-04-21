@@ -186,8 +186,9 @@ class Safe(object):
 
 class Container(object):
     """ Containers store secrets. """
-    def list(self):
-        """ returns a list of all keys of all entries in this container """
+    def list(self, with_secrets=False):
+        """ Returns the key, note and, if with_secrets is True, the secret
+            of each entry in the container. """
         raise NotImplementedError
     def add(self, key, note, secret):
         """ adds a new entry (key, note, secret) """
@@ -276,17 +277,23 @@ class ElGamalSafe(Safe):
                 append_pt = pol.serialization.son_to_string(self.append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
             self.unsaved_changes = False
-        def list(self):
+        def list(self, with_secrets=False):
             if not self.main_data:
+                raise MissingKey
+            if with_secrets and not self.secret_data:
                 raise MissingKey
             ret = []
             if self.main_data:
-                ret.extend(self.main_data.entries)
+                for i, entry in enumerate(self.main_data.entries):
+                    ret.append([entry[0], entry[1],
+                                    self.secret_data.entries[i]]
+                            if with_secrets else entry)
             if self.secret_data and self.append_data:
                 for raw_entry in self.append_data.entries:
                     ret.append(pol.serialization.string_to_son(
                                 self.safe.envelope.open(raw_entry,
-                                        self.secret_data.privkey))[:2])
+                                        self.secret_data.privkey))[
+                                :3 if with_secrets else 2])
             return ret
         def get(self, key):
             if not self.main_data:

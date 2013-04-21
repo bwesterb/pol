@@ -84,7 +84,7 @@ def zxcvbn_getpass(prompt, prefix=''):
                 text = '%-4s %3sb %s' % (strength['score'] * '*',
                                 int(strength['entropy']),
                                 strength['crack_time_display'])
-                sys.stderr.write('\033[60G\033[K%s\033[%sG' % (
+                sys.stderr.write('\033[55G\033[K%s\033[%sG' % (
                             text, prompt_offset + 1))
                 sys.stderr.flush()
             c = sys.stdin.read(1)
@@ -125,6 +125,6 @@ def zxcvbn_getpass(prompt, prefix=''):
             elif c == '\x03': # C-c
                 raise KeyboardInterrupt
             else:
-                sys.stderr.write('\033[60G\033[Kignored key %r\033[%sG' % (
+                sys.stderr.write('\033[55G\033[Kignored key %r\033[%sG' % (
                                              c, prompt_offset + 1))
                 sys.stderr.flush()

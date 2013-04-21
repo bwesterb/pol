@@ -282,9 +282,11 @@ class Program(object):
                     print
             if interactive:
                 if first:
-                    masterpw = getpass.getpass('    Enter master-password: ')
+                    masterpw = pol.terminal.zxcvbn_getpass(
+                            'Enter master-password: ', '    ')
                 else:
-                    masterpw = getpass.getpass('    Enter master-password [stop]: ')
+                    masterpw = pol.terminal.zxcvbn_getpass(
+                            'Enter master-password [stop]: ', '    ')
             else:
                 masterpw = cmdline_pws.pop() if cmdline_pws else ''
             if not first and not masterpw:
@@ -296,7 +298,8 @@ class Program(object):
                 print "  entries.  Leave blank if you do not want a list-password."
                 print
             if interactive:
-                listpw = getpass.getpass('    Enter list-password [no list-password]: ')
+                listpw = pol.terminal.zxcvbn_getpass(
+                            'Enter list-password [no list-password]: ', '    ')
             else:
                 listpw = cmdline_pws.pop() if cmdline_pws else ''
             if interactive and first:
@@ -306,7 +309,8 @@ class Program(object):
                 print "  Leave blank if you do not want an append-passowrd."
                 print
             if interactive:
-                appendpw = getpass.getpass('    Enter append-password [no append-password]: ')
+                appendpw = pol.terminal.zxcvbn_getpass(
+                        'Enter append-password [no append-password]: ', '    ')
             else:
                 appendpw = cmdline_pws.pop() if cmdline_pws else ''
             if second:

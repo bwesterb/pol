@@ -13,6 +13,7 @@ import getpass
 import pprint
 import shlex
 import sys
+import csv
 
 import pol.safe
 import pol.passgen
@@ -203,6 +204,23 @@ class Program(object):
                     metavar='PASSWORD',
                     help='Password of KeePass db to import')
         p_import_keepass.set_defaults(func=self.cmd_import_keepass)
+
+        # pol export
+        p_export = subparsers.add_parser('export',
+                        add_help=False,
+                    help='Exports entries to CSV')
+        p_export.add_argument('--output', '-o',
+                    help='Path to CSV file to write to.  Defaults to stdout.',
+                    default='-')
+        p_export_b = p_export.add_argument_group('basic options')
+        p_export_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_export_b.add_argument('-f', '--force', action='store_true',
+                    help='Overwrite existing file')
+        p_export_a = p_export.add_argument_group('advanced options')
+        p_export_a.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to export')
+        p_export.set_defaults(func=self.cmd_export)
 
         # pol shell
         p_shell = subparsers.add_parser('shell',
@@ -713,6 +731,38 @@ class Program(object):
             except Exception:
                 sys.stderr.write(traceback.format_exc())
                 sys.stderr.flush()
+
+    def cmd_export(self):
+        close_f = False
+        rows_written = 0
+        found_one = False
+        try:
+            if self.args.output == '-':
+                f = sys.stdout
+            else:
+                if os.path.exists(self.args.output) and not self.args.force:
+                    sys.stderr.write("%s exists. Use -f to override.\n"
+                                            % self.args.output)
+                    return -11
+                f = open(self.args.output, 'w')
+                close_f = True
+            writer = csv.writer(f)
+            with self._open_safe() as safe:
+                for container in safe.open_containers(
+                        self.args.password if self.args.password
+                                else getpass.getpass('Enter password: '),
+                            on_move_append_entries=self._on_move_append_entries):
+                    found_one = True
+                    for entry in container.list(with_secrets=True):
+                        rows_written += 1
+                        writer.writerow(entry)
+            if not found_one:
+                sys.stderr.write("The password did not open any container.\n")
+                return -1
+        finally:
+            if close_f:
+                f.close()
+        sys.stderr.write("%s entries exported.\n" % rows_written)
 
     def _rerand_progress(self):
         progressbar = pol.progressbar.ProgressBar()

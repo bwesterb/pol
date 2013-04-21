@@ -201,6 +201,16 @@ class Program(object):
                     help='Password of KeePass db to import')
         p_import_keepass.set_defaults(func=self.cmd_import_keepass)
 
+        # pol speed
+        p_speed = subparsers.add_parser('speed',
+                        add_help=False,
+                    help='Measures speed of the components of pol')
+        p_speed_b = p_speed.add_argument_group(
+                                    'basic options')
+        p_speed_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_speed.set_defaults(func=self.cmd_speed)
+
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
@@ -687,6 +697,10 @@ class Program(object):
                                   record['password'])
             the_container.save()
             print "%s records imported" % len(records)
+
+    def cmd_speed(self):
+        import pol.speed
+        return pol.speed.main(self)
 
     def _rerand_progress(self):
         progressbar = pol.progressbar.ProgressBar()

@@ -380,17 +380,11 @@ class Program(object):
             return -10
     
     def cmd_touch(self):
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             safe.touch()
 
     def cmd_raw(self):
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             d = dict(safe.data)
             if not self.args.blocks:
                 del d['blocks']
@@ -410,10 +404,7 @@ class Program(object):
                         pprint.pprint(container.secret_data)
 
     def cmd_get(self):
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             entries = []
             for container in safe.open_containers(
@@ -449,10 +440,7 @@ class Program(object):
             print 'Clipboard access not available.'
             print 'Use `pol get\' to print secrets.'
             return -7
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             entries = []
             for container in safe.open_containers(
@@ -516,10 +504,7 @@ class Program(object):
             return -3
         return self._store(pw)
     def _store(self, pw):
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             stored = False
             for container in safe.open_containers(
@@ -545,10 +530,7 @@ class Program(object):
         pw = pol.passgen.generate_password()
         found_one = False
         stored = False
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             for container in safe.open_containers(
                     self.args.password if self.args.password
                             else getpass.getpass('Enter (append-)password: '),
@@ -581,10 +563,7 @@ class Program(object):
             # TODO do rerandomization in parallel
 
     def cmd_list(self):
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             for container in safe.open_containers(
                     self.args.password if self.args.password
@@ -623,10 +602,7 @@ class Program(object):
                 fkeyfile.close()
 
         # Secondly, find a container
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             the_container = None
             for container in safe.open_containers(
@@ -674,10 +650,7 @@ class Program(object):
             header, records = pol.importers.psafe3.load(f, ps3pwd)
 
         # Secondly, find a container
-        with pol.safe.open(os.path.expanduser(self.args.safe),
-                           nworkers=self.args.workers,
-                           use_threads=self.args.threads,
-                           progress=self._rerand_progress()) as safe:
+        with self._open_safe() as safe:
             found_one = False
             the_container = None
             for container in safe.open_containers(
@@ -754,6 +727,11 @@ class Program(object):
     def _on_move_append_entries(self, entries):
         sys.stderr.write("  moved entries into container: %s\n" % (
                 pol.humanize.join([entry[0] for entry in entries])))
+    def _open_safe(self):
+        return pol.safe.open(os.path.expanduser(self.args.safe),
+                           nworkers=self.args.workers,
+                           use_threads=self.args.threads,
+                           progress=self._rerand_progress())
 
 def entrypoint(argv=None):
     if argv is None:

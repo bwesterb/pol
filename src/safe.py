@@ -13,6 +13,7 @@ import pol.serialization
 import pol.blockcipher
 import pol.parallel
 import pol.envelope
+import pol.xrandom
 import pol.elgamal
 import pol.ks
 import pol.kd
@@ -373,7 +374,7 @@ class ElGamalSafe(Safe):
             iv = randfunc(self.safe.cipher.blocksize)
             other_indices = list(self.indices)
             other_indices.remove(self.first_index)
-            random.shuffle(other_indices)
+            pol.xrandom.shuffle(other_indices)
             cipher = self.safe._cipherstream(key, iv)
             # Thirdly, write the first block
             first_block_pt_size = (bpb - 2*self.safe.cipher.blocksize
@@ -732,7 +733,7 @@ class ElGamalSafe(Safe):
         if nblocks == 0:
             raise ValueError("`nblocks' should be positive")
         free_blocks = list(self.free_blocks)
-        random.shuffle(free_blocks)
+        pol.xrandom.shuffle(free_blocks)
         indices = free_blocks[:nblocks]
         self.free_blocks = set(free_blocks[nblocks:])
         ret = ElGamalSafe.Slice(self, random.choice(indices), indices)

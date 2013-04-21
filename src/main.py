@@ -4,11 +4,14 @@
 
     Contains the argument parser and CLI interaction. """
 
+import traceback
+import readline
 import argparse
 import logging
 import os.path
 import getpass
 import pprint
+import shlex
 import sys
 
 import pol.safe
@@ -201,6 +204,16 @@ class Program(object):
                     help='Password of KeePass db to import')
         p_import_keepass.set_defaults(func=self.cmd_import_keepass)
 
+        # pol shell
+        p_shell = subparsers.add_parser('shell',
+                        add_help=False,
+                    help='Start interactive shell')
+        p_shell_b = p_shell.add_argument_group(
+                                    'basic options')
+        p_shell_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_shell.set_defaults(func=self.cmd_shell)
+
         # pol speed
         p_speed = subparsers.add_parser('speed',
                         add_help=False,
@@ -214,6 +227,9 @@ class Program(object):
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
+        if not argv:
+            argv = ['shell']
+
         # Parse arguments
         self.parse_args(argv)
 
@@ -701,6 +717,27 @@ class Program(object):
     def cmd_speed(self):
         import pol.speed
         return pol.speed.main(self)
+
+    def cmd_shell(self):
+        # TODO a more stateful shell would be nice: then we only have to
+        #       ask for the password and rerandomize once.
+        while True:
+            try:
+                line = raw_input('pol> ')
+            except EOFError:
+                break
+            argv = shlex.split(line)
+            try:
+                self.parse_args(argv)
+            except SystemExit:
+                continue
+            if self.args.func is self.cmd_shell:
+                continue
+            try:
+                self.args.func()
+            except Exception:
+                sys.stderr.write(traceback.format_exc())
+                sys.stderr.flush()
 
     def _rerand_progress(self):
         progressbar = pol.progressbar.ProgressBar()

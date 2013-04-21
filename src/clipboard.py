@@ -2,6 +2,7 @@
 
 import sys
 import logging
+import warnings
 import subprocess
 
 l = logging.getLogger(__name__)
@@ -20,12 +21,18 @@ if sys.platform == 'darwin':
         return subprocess.check_output(['pbpaste'])
 else:
     # Then, try GTK
+    got_gtk = False
     try:
-        import gtk
-    except:
-        got_gtk = False
+        with warnings.catch_warnings(record=True) as ws:
+            import gtk
+            if not ws or all([w.message.message != 'could not open display'
+                                    for w in ws]):
+                got_gtk = True
+    except ImportError:
+        pass
 
     if got_gtk:
+        available = True
         def copy(s):
             cb = gtk.Clipboard()
             cb.set_text(s)

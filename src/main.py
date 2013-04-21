@@ -721,6 +721,8 @@ class Program(object):
     def cmd_shell(self):
         # TODO a more stateful shell would be nice: then we only have to
         #       ask for the password and rerandomize once.
+        if not os.path.exists(os.path.expanduser(self.args.safe)):
+            print "No safe found.  Type `init' to create a new safe."
         while True:
             try:
                 line = raw_input('pol> ')

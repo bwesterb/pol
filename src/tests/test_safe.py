@@ -55,6 +55,13 @@ class TestElgamalSafe(unittest.TestCase):
         data = randfunc(sl.size)
         sl.store('key', data)
         self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
+    def test_lage_slice(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        sl = safe._new_slice(70)
+        randfunc = Crypto.Random.new().read
+        data = randfunc(sl.size)
+        sl.store('key', data, annex=True)
+        self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
 
 if __name__ == '__main__':
     unittest.main()

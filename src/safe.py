@@ -29,6 +29,8 @@ import Crypto.Random.random as random
 
 l = logging.getLogger(__name__)
 
+SAFE_MAGIC = 'pol\n' + binascii.unhexlify('d163d4977a2cf681ad9a6cfe98ab')
+
 class MissingKey(ValueError):
     pass
 
@@ -133,6 +135,7 @@ class Safe(object):
             This is done automatically if opened with `open'. """
         start_time = time.time()
         l.debug('Packing ...')
+        stream.write(SAFE_MAGIC)
         msgpack.pack(self.data, stream)
         l.debug(' packed in %.2fs', time.time() - start_time)
 
@@ -144,6 +147,9 @@ class Safe(object):
             handles locking. """
         start_time = time.time()
         l.debug('Unpacking ...')
+        magic = stream.read(len(SAFE_MAGIC))
+        if magic != SAFE_MAGIC:
+            raise SafeFormatError("Invalid magic.  Is this a pol safe?")
         data = msgpack.unpack(stream, use_list=True)
         l.debug(' unpacked in %.2fs', time.time() - start_time)
         if ('type' not in data or not isinstance(data['type'], basestring)

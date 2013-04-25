@@ -339,10 +339,9 @@ class ElGamalSafe(Safe):
             self.unsaved_changes = True
 
     class Slice(object):
-        def __init__(self, safe, first_index, indices, value=None):
+        def __init__(self, safe, indices, value=None):
             self.safe = safe
             self.indices = indices
-            self.first_index = first_index
             self._value = value
         def trash(self, randfunc=None):
             """ Destroy contents of this slice by writing random values. """
@@ -352,6 +351,9 @@ class ElGamalSafe(Safe):
             key = randfunc(self.safe.kd.size)
             pt = randfunc(self.size)
             self.store(key, pt, randfunc, annex=True)
+        @property
+        def first_index(self):
+            return self.indices[0]
         @property
         def size(self):
             """ The amount of plaintext bytes this slice can store. """
@@ -373,43 +375,26 @@ class ElGamalSafe(Safe):
             if len(value) > total_size:
                 raise ValueError("`value' too large")
             l.debug('Slice.store: storing @%s; %s blocks; %s/%sB',
-                    self.first_index, len(self.indices), len(value),
+                    self.indices[0], len(self.indices), len(value),
                     total_size)
-            raw = value.ljust(total_size, '\0')
-            # Secondly, generate an IV, shuffle indices and get a cipherstream
+            # Secondly, generate an IV and get a cipherstream
             iv = randfunc(self.safe.cipher.blocksize)
-            other_indices = list(self.indices)
-            other_indices.remove(self.first_index)
-            pol.xrandom.shuffle(other_indices)
             cipher = self.safe._cipherstream(key, iv)
-            # Thirdly, write the first block
-            first_block_pt_size = (bpb - 2*self.safe.cipher.blocksize
-                                        - self.safe.block_index_size
-                                        - self.safe.slice_size)
-            if other_indices:
-                second_block = other_indices[0]
-            else:
-                second_block = self.first_index
-            first_block_ct = (self.safe.kd([self.safe._cipherstream_key(key)],
-                                        length=self.safe.cipher.blocksize) + iv
-                                + cipher.encrypt(self.safe._slice_size_to_bytes(
-                                        len(value))+raw[:first_block_pt_size]
-                                + self.safe._index_to_bytes(second_block)))
-            self.safe._eg_encrypt_block(key, self.first_index, first_block_ct,
-                                            randfunc, annex=annex)
-            offset = first_block_pt_size
-            ptsize = bpb - self.safe.block_index_size
-            # Finally, write the remaining blocks
-            for indexindex, index in enumerate(other_indices):
-                if indexindex + 1 < len(other_indices):
-                    next_index = other_indices[indexindex + 1]
-                else:
-                    next_index = index
-                ct = cipher.encrypt(raw[offset:offset+ptsize] +
-                                self.safe._index_to_bytes(next_index))
-                offset += ptsize
-                self.safe._eg_encrypt_block(key, index, ct, randfunc,
-                                                annex=annex)
+            # Thirdly, prepare the ciphertext
+            plaintext = (self.safe._index_to_bytes(len(self.indices))
+                          + ''.join([self.safe._index_to_bytes(index)
+                                      for index in self.indices[1:]])
+                          + self.safe._slice_size_to_bytes(len(value))
+                          + value).ljust(bpb * len(self.indices), '\0')
+            ciphertext = (self.safe.kd([self.safe._cipherstream_key(key)],
+                                        length=self.safe.cipher.blocksize)
+                                + iv
+                                + cipher.encrypt(plaintext))
+            # Finally, write the blocks
+            for indexindex, index in enumerate(self.indices):
+                self.safe._eg_encrypt_block(key, index,
+                        ciphertext[bpb*indexindex:bpb*(indexindex+1)],
+                        randfunc, annex=annex)
             self._value = value
             self.safe.touch()
 
@@ -742,7 +727,7 @@ class ElGamalSafe(Safe):
         pol.xrandom.shuffle(free_blocks)
         indices = free_blocks[:nblocks]
         self.free_blocks = set(free_blocks[nblocks:])
-        ret = ElGamalSafe.Slice(self, random.choice(indices), indices)
+        ret = ElGamalSafe.Slice(self, indices)
         return ret
 
     def _find_slices(self, key):
@@ -773,24 +758,37 @@ class ElGamalSafe(Safe):
         # First, extract the IV and create a cipherstream
         l.debug('_load_slice_from_first_block: @%s', index)
         indices = [index]
-        iv = fbct[self.cipher.blocksize:self.cipher.blocksize*2]
+        offset = self.cipher.blocksize
+        iv = fbct[offset:offset+self.cipher.blocksize]
+        offset += self.cipher.blocksize
         cipherstream = self._cipherstream(key, iv)
-        # Now, read the first block
-        fbpt = cipherstream.decrypt(fbct[self.cipher.blocksize*2:])
-        size = self._slice_size_from_bytes(fbpt[:self.slice_size])
-        ret = fbpt[self.slice_size:-self.block_index_size]
-        current_index = index
-        next_index = self._index_from_bytes(fbpt[-self.block_index_size:])
-        # Finally, read the remaining blocks
-        while current_index != next_index:
-            current_index = next_index
-            indices.append(current_index)
-            ct = self._eg_decrypt_block(key, current_index)
-            pt = cipherstream.decrypt(ct)
-            ret += pt[:-self.block_index_size]
-            next_index = self._index_from_bytes(pt[-self.block_index_size:])
+        # Secondly, read the amount of blocks in the slice
+        pt = cipherstream.decrypt(fbct[offset:])
+        indices_to_read = self._index_from_bytes(
+                            pt[:self.block_index_size]) - 1
+        offset = self.block_index_size
+        # Now, read the indices
+        indexindex = 0
+        while indices_to_read:
+            if offset + self.block_index_size > len(pt):
+                indexindex += 1
+                assert len(indices) > indexindex
+                pt += cipherstream.decrypt(self._eg_decrypt_block(
+                                            key, indices[indexindex]))
+            indices.append(self._index_from_bytes(
+                            pt[offset:offset+self.block_index_size]))
+            offset += self.block_index_size
+            indices_to_read -= 1
+        # Read the remaining blocks
+        while indexindex <= len(indices) - 2:
+            indexindex += 1
+            pt += cipherstream.decrypt(self._eg_decrypt_block(
+                                        key, indices[indexindex]))
+        # Read size
+        size = self._slice_size_from_bytes(pt[offset:offset+self.slice_size])
+        offset += self.slice_size
         l.debug('_load_slice_from_first_block:   %s blocks', len(indices))
-        return ElGamalSafe.Slice(self, index, indices, ret[:size])
+        return ElGamalSafe.Slice(self, indices, pt[offset:offset+size])
 
     def _index_to_bytes(self, index):
         return self._block_index_struct.pack(index)

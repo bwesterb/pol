@@ -408,8 +408,8 @@ class ElGamalSafe(Safe):
                 self.safe._write_block(index, raw_block)
             self._value = value
             duration = time.time() - time_started
-            l.debug('Slice.store:  ... done in %.3f (%.1f block/s)' % (
-                        duration, len(self.indices) / duration))
+            l.debug('Slice.store:  ... done in %.3f (%.1f block/s)',
+                        duration, len(self.indices) / duration)
             self.safe.touch()
 
         def _store_block(self, ct_index, key, annex, randfunc):
@@ -785,6 +785,7 @@ class ElGamalSafe(Safe):
     def _load_slice_from_first_block(self, key, index, fbct):
         # First, extract the IV and create a cipherstream
         l.debug('_load_slice_from_first_block: @%s', index)
+        time_started = time.time()
         indices = [index]
         offset = self.cipher.blocksize
         iv = fbct[offset:offset+self.cipher.blocksize]
@@ -815,8 +816,12 @@ class ElGamalSafe(Safe):
         # Read size
         size = self._slice_size_from_bytes(pt[offset:offset+self.slice_size])
         offset += self.slice_size
-        l.debug('_load_slice_from_first_block:   %s blocks', len(indices))
-        return ElGamalSafe.Slice(self, indices, pt[offset:offset+size])
+        ret = ElGamalSafe.Slice(self, indices, pt[offset:offset+size])
+        duration = time.time() - time_started
+        l.debug('_load_slice_from_first_block:   %s blocks;'+
+                    ' %.3fs (%.1f blocks/s)',
+                    len(indices), duration, len(indices) / duration)
+        return ret
 
     def _index_to_bytes(self, index):
         return self._block_index_struct.pack(index)

@@ -16,11 +16,13 @@ class TestElgamalSafe(unittest.TestCase):
     def test_elgamal(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=1)
         randfunc = Crypto.Random.new().read
-        safe._eg_encrypt_block('key', 0, '123456789', randfunc, annex=True)
+        safe._write_block(0, safe._eg_encrypt_block(
+                        'key', 0, '123456789', randfunc, annex=True))
         self.assertEqual(safe._eg_decrypt_block('key', 0),
                         '123456789'.ljust(safe.bytes_per_block, '\0'))
         data = randfunc(safe.bytes_per_block)
-        safe._eg_encrypt_block('key', 0, data, randfunc)
+        safe._write_block(0, safe._eg_encrypt_block(
+                        'key', 0, data, randfunc))
         self.assertEqual(safe._eg_decrypt_block('key', 0), data)
     def test_slice_store(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
@@ -55,7 +57,7 @@ class TestElgamalSafe(unittest.TestCase):
         data = randfunc(sl.size)
         sl.store('key', data)
         self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
-    def test_lage_slice(self):
+    def test_large_slice(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         sl = safe._new_slice(70)
         randfunc = Crypto.Random.new().read

@@ -92,7 +92,7 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False):
         if not os.path.exists(path):
             raise SafeNotFoundError
         with _builtin_open(path, 'r' if readonly else 'r+') as f:
-            safe = Safe.load_from_stream(f)
+            safe = Safe.load_from_stream(f, nworkers, use_threads)
             yield safe
             if not readonly:
                 safe.autosave_containers()
@@ -112,8 +112,10 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False):
 class Safe(object):
     """ A pol safe deniably stores containers. (Containers store secrets.) """
 
-    def __init__(self, data):
+    def __init__(self, data, nworkers, use_threads):
         self.data = data
+        self.nworkers = nworkers
+        self.use_threads = use_threads
         if 'key-stretching' not in self.data:
             raise SafeFormatError("Missing `key-stretching' attribute")
         if 'key-derivation' not in self.data:
@@ -140,7 +142,7 @@ class Safe(object):
         l.debug(' packed in %.2fs', time.time() - start_time)
 
     @staticmethod
-    def load_from_stream(stream):
+    def load_from_stream(stream, nworkers, use_threads):
         """ Loads a Safe form a `stream'.
 
             If you load from a file, use `open' for that function also
@@ -155,7 +157,7 @@ class Safe(object):
         if ('type' not in data or not isinstance(data['type'], basestring)
                 or data['type'] not in TYPE_MAP):
             raise SafeFormatError("Invalid `type' attribute")
-        return TYPE_MAP[data['type']](data)
+        return TYPE_MAP[data['type']](data, nworkers, use_threads)
 
     @staticmethod
     def generate(typ='elgamal', *args, **kwargs):
@@ -392,18 +394,39 @@ class ElGamalSafe(Safe):
                                 + iv
                                 + cipher.encrypt(plaintext))
             # Finally, write the blocks
-            for indexindex, index in enumerate(self.indices):
-                self.safe._eg_encrypt_block(key, index,
-                        ciphertext[bpb*indexindex:bpb*(indexindex+1)],
-                        randfunc, annex=annex)
+            for index, raw_block in pol.parallel.parallel_map(
+                    self._store_block,
+                    [(ciphertext[bpb*indexindex:bpb*(indexindex+1)], index)
+                        for indexindex, index in enumerate(self.indices)],
+                    args=(key, annex),
+                    initializer=self._store_block_initializer,
+                    nworkers=self.safe.nworkers,
+                    use_threads=self.safe.use_threads,
+                    chunk_size=8):
+                if raw_block is None:
+                    raise WrongKeyError
+                self.safe._write_block(index, raw_block)
             self._value = value
             duration = time.time() - time_started
             l.debug('Slice.store:  ... done in %.3f (%.1f block/s)' % (
                         duration, len(self.indices) / duration))
             self.safe.touch()
 
-    def __init__(self, data):
-        super(ElGamalSafe, self).__init__(data)
+        def _store_block(self, ct_index, key, annex, randfunc):
+            try:
+                ct, index = ct_index
+                return index, self.safe._eg_encrypt_block(key, index, ct,
+                                                randfunc, annex=annex)
+            except WrongKeyError:
+                # TODO it would  be prettier if parallel_map passes the
+                #      exception
+                return index, None
+        def _store_block_initializer(self, args, kwargs):
+            Crypto.Random.atfork()
+            kwargs['randfunc'] = Crypto.Random.new().read
+
+    def __init__(self, data, nworkers, use_threads):
+        super(ElGamalSafe, self).__init__(data, nworkers, use_threads)
         # Check if `data' makes sense.
         self.free_blocks = set([])
         self.auto_save_containers = []
@@ -483,7 +506,8 @@ class ElGamalSafe(Safe):
                  'key-derivation': kd.params,
                  'envelope': envelope.params,
                  'block-cipher': cipher.params,
-                 'blocks': [['','','',''] for i in xrange(n_blocks)]})
+                 'blocks': [['','','',''] for i in xrange(n_blocks)]},
+                        nworkers, use_threads)
         # Mark all blocks as free
         safe.mark_free(xrange(n_blocks))
         return safe
@@ -833,10 +857,21 @@ class ElGamalSafe(Safe):
         c1 = pol.serialization.string_to_number(self.data['blocks'][index][0])
         c2 = pol.serialization.string_to_number(self.data['blocks'][index][1])
         return pol.elgamal.decrypt(c1, c2, privkey, gp, self.bytes_per_block)
+    def _write_block(self, index, block):
+        """ Apply changes returned by `_eg_encrypt_block'. """
+        self.data['blocks'][index][0] = block[0]
+        self.data['blocks'][index][1] = block[1]
+        if block[2] is not None:
+            self.data['blocks'][index][2] = block[2]
+        if block[3] is not None:
+            self.data['blocks'][index][3] = block[3]
     def _eg_encrypt_block(self, key, index, s, randfunc, annex=False):
-        """ Sets the El-Gamal encrypted content of block `index' to `s'
-            using key `key' """
+        """ Returns the changed entries for block `index' such that it
+            encrypts `s' using `key'.  Use `_write_block' to apply. """
+        # We do not write immediately, such that _eg_encrypt_block can
+        # be called in a separate process.
         assert len(s) <= self.bytes_per_block
+        ret = [None, None, None, None]
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
         marker = self._marker_for_block(key, index)
@@ -845,16 +880,17 @@ class ElGamalSafe(Safe):
                 raise WrongKeyError
             pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
             binary_pubkey = pol.serialization.number_to_string(pubkey)
-            self.data['blocks'][index][2] = binary_pubkey
-            self.data['blocks'][index][3] = marker
+            ret[2] = binary_pubkey
+            ret[3] = marker
         else:
             pubkey = pol.serialization.string_to_number(
                         self.data['blocks'][index][2])
         # TODO is it safe to pick r so much smaller than p?
         c1, c2 = pol.elgamal.encrypt(s, pubkey, gp,
                                      self.bytes_per_block, randfunc)
-        self.data['blocks'][index][0] = pol.serialization.number_to_string(c1)
-        self.data['blocks'][index][1] = pol.serialization.number_to_string(c2)
+        ret[0] = pol.serialization.number_to_string(c1)
+        ret[1] = pol.serialization.number_to_string(c2)
+        return ret
 
 def _eg_rerandomize_block_initializer(args, kwargs):
     Crypto.Random.atfork()

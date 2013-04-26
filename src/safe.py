@@ -809,10 +809,16 @@ class ElGamalSafe(Safe):
             offset += self.block_index_size
             indices_to_read -= 1
         # Read the remaining blocks
-        while indexindex <= len(indices) - 2:
-            indexindex += 1
-            pt += cipherstream.decrypt(self._eg_decrypt_block(
-                                        key, indices[indexindex]))
+        pt += ''.join(pol.parallel.parallel_map(
+                self._load_block,
+                [(ii*self.bytes_per_block - self.cipher.blocksize*2,
+                                indices[ii])
+                        for ii in xrange(indexindex+1, len(indices))],
+                args=(self._cipherstream_key(key), key, iv),
+                initializer=self._load_block_initializer,
+                nworkers=self.nworkers,
+                use_threads=self.use_threads,
+                chunk_size=8))
         # Read size
         size = self._slice_size_from_bytes(pt[offset:offset+self.slice_size])
         offset += self.slice_size
@@ -852,6 +858,13 @@ class ElGamalSafe(Safe):
                             length=self.bytes_per_block))
 
     # ElGamal encryption and decryption
+    def _load_block_initializer(self, args, kwargs):
+        Crypto.Random.atfork()
+    def _load_block(self, offset_index, cipherstream_key, key, iv):
+        offset, index = offset_index
+        return self.cipher.new_stream(cipherstream_key, iv,
+                offset=offset).decrypt(self._eg_decrypt_block(key, index))
+
     def _eg_decrypt_block(self, key, index):
         """ Decrypts the block `index' with `key' """
         marker = self._marker_for_block(key, index)

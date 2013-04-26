@@ -67,13 +67,16 @@ class AESBlockCipher(BlockCipher):
             raise KeyStretchingParameterError("Invalid param `bits'")
         self.bits = params['bits']
 
-    def new_stream(self, key, iv):
+    def new_stream(self, key, iv, offset=0):
+        if offset % 16 != 0:
+            raise ValueError("`offset' should be a multiple of 16")
         if len(key) * 8 != self.bits:
             raise ValueError("`key' should be %s long" % (self.bits/8))
         if len(iv) != 16:
             raise ValueError("`iv' should be 16 bytes long")
         ctr = Crypto.Util.Counter.new(128,
-                    initial_value=pol.serialization.string_to_number(iv))
+                    initial_value=pol.serialization.string_to_number(iv)
+                                + offset/16)
         cipher = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CTR,
                                             counter=ctr)
         return _AESStream(cipher)

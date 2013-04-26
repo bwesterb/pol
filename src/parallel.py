@@ -27,6 +27,16 @@ def parallel_map(func, seq, args=None, kwargs=None, chunk_size=1,
                         with (args, kwargs) as arguments.  `initializer`
                         may change args, kwargs.
             `use_threads`   specifies to use threads instead of processes. """
+    # Shortcut for when there is only one chunk:
+    if args is None:
+        args = ()
+    if kwargs is None:
+        kwargs = {}
+    if len(seq) <= chunk_size:
+        if initializer is not None:
+            initializer(args, kwargs)
+        return  [func(x, *args, **kwargs) for x in seq]
+    # We got more than one chunk --- we will need workers:
     def worker(c_func, c_args, c_kwargs, c_input, c_output, c_initializer):
         if c_initializer is not None:
             c_initializer(c_args, c_kwargs)
@@ -39,10 +49,6 @@ def parallel_map(func, seq, args=None, kwargs=None, chunk_size=1,
             for x in xs:
                 ys.append(c_func(x, *c_args, **c_kwargs))
             c_output.put((i, ys))
-    if args is None:
-        args = ()
-    if kwargs is None:
-        kwargs = {}
     if nworkers is None:
         nworkers = multiprocessing.cpu_count()
     p_input = multiprocessing.Queue()

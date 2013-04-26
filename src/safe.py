@@ -374,6 +374,7 @@ class ElGamalSafe(Safe):
             total_size = self.size
             if len(value) > total_size:
                 raise ValueError("`value' too large")
+            time_started = time.time()
             l.debug('Slice.store: storing @%s; %s blocks; %s/%sB',
                     self.indices[0], len(self.indices), len(value),
                     total_size)
@@ -396,6 +397,9 @@ class ElGamalSafe(Safe):
                         ciphertext[bpb*indexindex:bpb*(indexindex+1)],
                         randfunc, annex=annex)
             self._value = value
+            duration = time.time() - time_started
+            l.debug('Slice.store:  ... done in %.3f (%.1f block/s)' % (
+                        duration, len(self.indices) / duration))
             self.safe.touch()
 
     def __init__(self, data):

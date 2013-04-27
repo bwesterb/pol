@@ -81,7 +81,8 @@ def create(path, override=False, *args, **kwargs):
 _builtin_open = open
 
 @contextlib.contextmanager
-def open(path, readonly=False, progress=None, nworkers=None, use_threads=False):
+def open(path, readonly=False, progress=None, nworkers=None, use_threads=False,
+                    always_rerandomize=True):
     """ Loads a safe from the filesystem.
 
         Contrary to `Safe.load_from_stream', this function also takes care
@@ -99,7 +100,7 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False):
             yield safe
             if not readonly:
                 safe.autosave_containers()
-                if safe.touched:
+                if safe.touched or always_rerandomize:
                     safe.rerandomize(progress=progress,
                                      nworkers=nworkers,
                                      use_threads=use_threads)

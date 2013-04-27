@@ -791,6 +791,9 @@ class Program(object):
         except pol.safe.WrongMagicError:
             sys.stderr.write("%s: not a pol safe.\n" % self.args.safe)
             return -13
+        except KeyboardInterrupt:
+            sys.stderr.write("\n^C\n")
+            return -14
         except Exception:
             self._handle_uncaught_exception()
             return -12

@@ -48,14 +48,14 @@ class ProgressBar(BaseProgressBar):
         width = 80 # TODO
         f = int(value * (width - 2))
         b = width - int(value * (width - 2)) - 2
-        sys.stdout.write('\033[1G')
-        sys.stdout.write('['+'='*f+' '*b+']')
-        sys.stdout.flush()
+        sys.stderr.write('\033[1G')
+        sys.stderr.write('['+'='*f+' '*b+']')
+        sys.stderr.flush()
     def start(self):
         pass
     def end(self):
-        sys.stdout.write('\033[1G\n')
-        sys.stdout.flush()
+        sys.stderr.write('\033[1G\n')
+        sys.stderr.flush()
 
 class ProbablisticProgressBar(BaseProgressBar):
     """ Terminal progress bar accepting prob_progress tuples """
@@ -75,19 +75,19 @@ class ProbablisticProgressBar(BaseProgressBar):
         b50 = p50 - p95
         b5 = p5 - p50
         s = width - 2 - p5
-        sys.stdout.write('\033[1G')
-        sys.stdout.write('['+'#'*b95 + '='*b50 + '-'*b5+' '*s+']')
-        sys.stdout.write('\n%5s tried, %5.1f/s %5.1f%%  %8s %8s %8s\033[1A' % (
+        sys.stderr.write('\033[1G')
+        sys.stderr.write('['+'#'*b95 + '='*b50 + '-'*b5+' '*s+']')
+        sys.stderr.write('\n%5s tried, %5.1f/s %5.1f%%  %8s %8s %8s\033[1A' % (
                     value.n, speed, value.p*100,
                         datetime.timedelta(0, t5) if t5 else '',
                         datetime.timedelta(0, t50) if t50 else '',
                         datetime.timedelta(0, t95) if t95 else ''))
-        sys.stdout.flush()
+        sys.stderr.flush()
     def start(self):
         self.start_time = time.time()
     def end(self):
-        sys.stdout.write('\033[1G\n\n')
-        sys.stdout.flush()
+        sys.stderr.write('\033[1G\n\n')
+        sys.stderr.flush()
 
 if __name__ == '__main__':
     import time

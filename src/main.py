@@ -245,45 +245,49 @@ class Program(object):
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
-        if not argv:
-            argv = ['shell']
-
-        # Parse arguments
-        self.parse_args(argv)
-
-        # Set up logging
-        extra_logging_config = {}
-        if self.args.verbosity >= 2:
-            level = logging.DEBUG
-            extra_logging_config['format'] = ('%(relativeCreated)d '+
-                    '%(levelname)s %(name)s %(message)s')
-        elif self.args.verbosity == 1:
-            level = logging.INFO
-        else:
-            level = logging.WARNING
-        logging.basicConfig(level=level, **extra_logging_config)
-
-        # Profile?
-        if self.args.profile:
-            import yappi
-            yappi.start()
-
-        # Execute command
         try:
-            ret = self.args.func()
-        except pol.safe.SafeNotFoundError:
-            sys.stderr.write("%s: no such file.\n" % self.args.safe)
-            sys.stderr.write("To create a new safe, run `pol init'.\n")
-            return -5
-        except pol.safe.SafeLocked:
-            sys.stderr.write("%s: locked.\n" % self.args.safe)
-            # TODO add a `pol break-lock'
-            return -6
-        if self.args.profile:
-            yappi.stop()
-            yappi.print_stats()
+            if not argv:
+                argv = ['shell']
 
-        return ret
+            # Parse arguments
+            self.parse_args(argv)
+
+            # Set up logging
+            extra_logging_config = {}
+            if self.args.verbosity >= 2:
+                level = logging.DEBUG
+                extra_logging_config['format'] = ('%(relativeCreated)d '+
+                        '%(levelname)s %(name)s %(message)s')
+            elif self.args.verbosity == 1:
+                level = logging.INFO
+            else:
+                level = logging.WARNING
+            logging.basicConfig(level=level, **extra_logging_config)
+
+            # Profile?
+            if self.args.profile:
+                import yappi
+                yappi.start()
+
+            # Execute command
+            try:
+                ret = self.args.func()
+            except pol.safe.SafeNotFoundError:
+                sys.stderr.write("%s: no such file.\n" % self.args.safe)
+                sys.stderr.write("To create a new safe, run `pol init'.\n")
+                return -5
+            except pol.safe.SafeLocked:
+                sys.stderr.write("%s: locked.\n" % self.args.safe)
+                # TODO add a `pol break-lock'
+                return -6
+            if self.args.profile:
+                yappi.stop()
+                yappi.print_stats()
+
+            return ret
+        except Exception:
+            self._handle_exception()
+            return -12
 
     def cmd_init(self):
         if (os.path.exists(os.path.expanduser(self.args.safe))
@@ -729,8 +733,7 @@ class Program(object):
             try:
                 self.args.func()
             except Exception:
-                sys.stderr.write(traceback.format_exc())
-                sys.stderr.flush()
+                self._handle_exception()
 
     def cmd_export(self):
         close_f = False
@@ -782,6 +785,17 @@ class Program(object):
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
                            progress=self._rerand_progress())
+    def _handle_exception(self):
+        sys.stderr.write("\n")
+        sys.stderr.write("An unhandled exception occured:\n")
+        sys.stderr.write("\n   ")
+        sys.stderr.write(traceback.format_exc().replace("\n", "\n   "))
+        sys.stderr.write("\n")
+        sys.stderr.write("Please report this error:\n")
+        sys.stderr.write("\n")
+        sys.stderr.write("   https://github.com/bwesterb/pol/issues\n")
+        sys.stderr.write("\n")
+        sys.stderr.flush()
 
 def entrypoint(argv=None):
     if argv is None:

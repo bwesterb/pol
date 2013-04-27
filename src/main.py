@@ -723,7 +723,7 @@ class Program(object):
                 self.parse_args(argv)
             except SystemExit:
                 continue
-            if self.args.func is self.cmd_shell:
+            if self.args.func == self.cmd_shell:
                 continue
             self._run_command()
 

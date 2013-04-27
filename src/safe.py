@@ -46,6 +46,9 @@ class SafeFullError(ValueError):
 class SafeFormatError(ValueError):
     pass
 
+class WrongMagicError(SafeFormatError):
+    pass
+
 class SafeLocked(ValueError):
     pass
 
@@ -151,7 +154,7 @@ class Safe(object):
         l.debug('Unpacking ...')
         magic = stream.read(len(SAFE_MAGIC))
         if magic != SAFE_MAGIC:
-            raise SafeFormatError("Invalid magic.  Is this a pol safe?")
+            raise WrongMagicError
         data = msgpack.unpack(stream, use_list=True)
         l.debug(' unpacked in %.2fs', time.time() - start_time)
         if ('type' not in data or not isinstance(data['type'], basestring)

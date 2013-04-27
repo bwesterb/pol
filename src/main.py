@@ -270,24 +270,14 @@ class Program(object):
                 yappi.start()
 
             # Execute command
-            try:
-                ret = self.args.func()
-            except pol.safe.SafeNotFoundError:
-                sys.stderr.write("%s: no such file.\n" % self.args.safe)
-                sys.stderr.write("To create a new safe, run `pol init'.\n")
-                return -5
-            except pol.safe.SafeLocked:
-                sys.stderr.write("%s: locked.\n" % self.args.safe)
-                # TODO add a `pol break-lock'
-                return -6
+            ret = self._run_command()
             if self.args.profile:
                 yappi.stop()
                 yappi.print_stats()
 
             return ret
         except Exception:
-            self._handle_exception()
-            return -12
+            self._handle_uncaught_exception()
 
     def cmd_init(self):
         if (os.path.exists(os.path.expanduser(self.args.safe))
@@ -720,9 +710,14 @@ class Program(object):
             print "No safe found.  Type `init' to create a new safe."
         while True:
             try:
-                line = raw_input('pol> ')
+                line = raw_input('pol> ').strip()
             except EOFError:
                 break
+            except KeyboardInterrupt:
+                sys.stderr.write("Use C-d to quit.\n")
+                continue
+            if not line:
+                continue
             argv = shlex.split(line)
             try:
                 self.parse_args(argv)
@@ -730,10 +725,7 @@ class Program(object):
                 continue
             if self.args.func is self.cmd_shell:
                 continue
-            try:
-                self.args.func()
-            except Exception:
-                self._handle_exception()
+            self._run_command()
 
     def cmd_export(self):
         close_f = False
@@ -785,7 +777,24 @@ class Program(object):
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
                            progress=self._rerand_progress())
-    def _handle_exception(self):
+    def _run_command(self):
+        try:
+            return self.args.func()
+        except pol.safe.SafeNotFoundError:
+            sys.stderr.write("%s: no such file.\n" % self.args.safe)
+            sys.stderr.write("To create a new safe, run `pol init'.\n")
+            return -5
+        except pol.safe.SafeLocked:
+            sys.stderr.write("%s: locked.\n" % self.args.safe)
+            # TODO add a `pol break-lock'
+            return -6
+        except pol.safe.WrongMagicError:
+            sys.stderr.write("%s: not a pol safe.\n" % self.args.safe)
+            return -13
+        except Exception:
+            self._handle_uncaught_exception()
+            return -12
+    def _handle_uncaught_exception(self):
         sys.stderr.write("\n")
         sys.stderr.write("An unhandled exception occured:\n")
         sys.stderr.write("\n   ")
@@ -796,6 +805,7 @@ class Program(object):
         sys.stderr.write("   https://github.com/bwesterb/pol/issues\n")
         sys.stderr.write("\n")
         sys.stderr.flush()
+
 
 def entrypoint(argv=None):
     if argv is None:

@@ -12,6 +12,7 @@ import os.path
 import getpass
 import pprint
 import shlex
+import time
 import sys
 import csv
 
@@ -759,16 +760,6 @@ class Program(object):
                 f.close()
         sys.stderr.write("%s entries exported.\n" % rows_written)
 
-    def _rerand_progress(self):
-        progressbar = pol.progressbar.ProgressBar()
-        started = False
-        def progress(v):
-            if not started:
-                progressbar.start()
-            progressbar(v)
-            if v == 1.0:
-                progressbar.end()
-        return progress
     def _on_move_append_entries(self, entries):
         sys.stderr.write("  moved entries into container: %s\n" % (
                 pol.humanize.join([entry[0] for entry in entries])))
@@ -776,7 +767,7 @@ class Program(object):
         return pol.safe.open(os.path.expanduser(self.args.safe),
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
-                           progress=self._rerand_progress())
+                           progress=Program._RerandProgress())
     def _run_command(self):
         try:
             return self.args.func()
@@ -808,6 +799,24 @@ class Program(object):
         sys.stderr.write("   https://github.com/bwesterb/pol/issues\n")
         sys.stderr.write("\n")
         sys.stderr.flush()
+
+    class _RerandProgress():
+        """ Glue between callbacks of rerandomize and the progressbar. """
+        def __init__(self):
+            self.progressbar = pol.progressbar.ProgressBar()
+            self.started = False
+            self.starting_time = None
+        def __call__(self, v):
+            if self.starting_time is None:
+                self.starting_time = time.time()
+            if not self.started and time.time() - self.starting_time > 1.0:
+                self.started = True
+                self.progressbar.start()
+            if not self.started:
+                return
+            self.progressbar(v)
+            if v == 1.0:
+                self.progressbar.end()
 
 
 def entrypoint(argv=None):

@@ -714,7 +714,7 @@ class Program(object):
             except EOFError:
                 break
             except KeyboardInterrupt:
-                sys.stderr.write("Use C-d to quit.\n")
+                sys.stderr.write("\nUse C-d to quit.\n")
                 continue
             if not line:
                 continue

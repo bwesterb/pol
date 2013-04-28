@@ -728,6 +728,7 @@ class Program(object):
             try:
                 line = raw_input('pol> ').strip()
             except EOFError:
+                sys.stderr.write("\n")
                 break
             except KeyboardInterrupt:
                 sys.stderr.write("\nUse C-d to quit.\n")

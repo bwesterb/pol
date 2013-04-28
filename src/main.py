@@ -4,6 +4,9 @@
 
     Contains the argument parser and CLI interaction. """
 
+import demandimport
+demandimport.enable()
+
 import traceback
 import readline
 import argparse
@@ -22,6 +25,12 @@ import pol.terminal
 import pol.humanize
 import pol.clipboard
 import pol.progressbar
+
+import pol.importers.keepass
+import pol.importers.psafe3
+import pol.speed
+
+import yappi
 
 class Program(object):
     def parse_args(self, argv):
@@ -277,7 +286,6 @@ class Program(object):
 
             # Profile?
             if self.args.profile:
-                import yappi
                 yappi.start()
 
             # Execute command
@@ -611,7 +619,6 @@ class Program(object):
 
     def cmd_import_keepass(self):
         # First load keepass db
-        import pol.importers.keepass
         kppwd = (self.args.keepass_password if self.args.keepass_password
                         else getpass.getpass('Enter password for KeePass db: '))
         fkeyfile = None
@@ -666,7 +673,6 @@ class Program(object):
 
     def cmd_import_psafe3(self):
         # First load psafe3 db
-        import pol.importers.psafe3
         ps3pwd = (self.args.psafe3_password if self.args.psafe3_password
                         else getpass.getpass('Enter password for psafe3 db: '))
         with open(self.args.path) as f:
@@ -711,7 +717,6 @@ class Program(object):
             print "%s records imported" % len(records)
 
     def cmd_speed(self):
-        import pol.speed
         return pol.speed.main(self)
 
     def cmd_shell(self):

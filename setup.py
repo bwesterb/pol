@@ -14,6 +14,7 @@ install_requires = [
     'lockfile >=0.8',        #      ibidem
     'zxcvbn >=1.0',
     'seccure >=0.1.2',
+    'demandimport >=0.1',
         ]
 
 if sys.version_info < (2, 7):

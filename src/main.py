@@ -243,6 +243,16 @@ class Program(object):
                     help='show this help message and exit')
         p_speed.set_defaults(func=self.cmd_speed)
 
+        p_nop = subparsers.add_parser('nop',
+                        add_help=False,
+                    help='Does nothing')
+        p_nop_b = p_nop.add_argument_group(
+                                    'basic options')
+        p_nop_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_nop_b.set_defaults(func=self.cmd_nop)
+
+
         self.args = parser.parse_args(argv)
 
     def main(self, argv):
@@ -759,6 +769,9 @@ class Program(object):
             if close_f:
                 f.close()
         sys.stderr.write("%s entries exported.\n" % rows_written)
+
+    def cmd_nop(self):
+        pass
 
     def _on_move_append_entries(self, entries):
         sys.stderr.write("  moved entries into container: %s\n" % (

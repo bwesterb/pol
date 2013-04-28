@@ -2,7 +2,7 @@
 
 import logging
 
-import Crypto.Random
+import Crypto.Random.random
 
 l = logging.getLogger(__name__)
 

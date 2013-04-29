@@ -446,10 +446,9 @@ class Program(object):
                     found_one = True
                 try:
                     for entry in container.get(self.args.key):
-                        if len(entry) == 3:
-                            entries.append((container, entry))
-                except pol.safe.MissingKey:
-                    continue
+                        if not entry.has_secret:
+                            continue
+                        entries.append((container, entry))
                 except KeyError:
                     continue
             if not found_one:
@@ -462,8 +461,8 @@ class Program(object):
                 sys.stderr.write("Multiple entries found.\n")
                 return -8
             entry = entries[0][1]
-            sys.stderr.write(' note: %s\n' % repr(entry[1]))
-            print entry[2]
+            sys.stderr.write(' note: %s\n' % repr(entry.note))
+            print entry.secret
             return
 
     def cmd_copy(self):
@@ -482,10 +481,9 @@ class Program(object):
                     found_one = True
                 try:
                     for entry in container.get(self.args.key):
-                        if len(entry) == 3:
-                            entries.append((container, entry))
-                except pol.safe.MissingKey:
-                    continue
+                        if not entry.has_secret:
+                            continue
+                        entries.append((container, entry))
                 except KeyError:
                     continue
             if not found_one:
@@ -496,9 +494,9 @@ class Program(object):
                 return -4
             if len(entries) == 1:
                 entry = entries[0][1]
-                print ' note: %s' % repr(entry[1])
+                print ' note: %s' % repr(entry.note)
                 print 'Copied secret to clipboard.  Press any key to clear ...'
-                pol.clipboard.copy(entry[2])
+                pol.clipboard.copy(entry.secret)
                 pol.terminal.wait_for_keypress()
                 pol.clipboard.clear()
                 return
@@ -512,9 +510,9 @@ class Program(object):
                     print
                 container, entry = tmp
                 print 'Entry #%s from container @%s' % (i+1, container.id)
-                print ' note: %s' % repr(entry[1])
+                print ' note: %s' % repr(entry.note)
                 print 'Copied secret to clipboard.  Press any key to clear ...'
-                pol.clipboard.copy(entry[2])
+                pol.clipboard.copy(entry.secret)
                 pol.terminal.wait_for_keypress()
                 pol.clipboard.clear()
     def cmd_paste(self):
@@ -607,9 +605,10 @@ class Program(object):
                 print 'Container @%s' % container.id
                 try:
                     got_entry = False
-                    for key, note in container.list():
+                    for entry in container.list():
                         got_entry = True
-                        print ' %-20s %s' % (key, repr(note) if note else '')
+                        print ' %-20s %s' % (entry.key, repr(entry.note)
+                                                    if entry.note else '')
                     if not got_entry:
                         print '  (empty)'
                 except pol.safe.MissingKey:
@@ -765,9 +764,9 @@ class Program(object):
                                 else getpass.getpass('Enter password: '),
                             on_move_append_entries=self._on_move_append_entries):
                     found_one = True
-                    for entry in container.list(with_secrets=True):
+                    for entry in container.list():
                         rows_written += 1
-                        writer.writerow(entry)
+                        writer.writerow([entry.key, entry.note, entry.secret])
             if not found_one:
                 sys.stderr.write("The password did not open any container.\n")
                 return -1

@@ -197,17 +197,33 @@ class Safe(object):
     def touch(self):
         self._touched = True
 
+class Entry(object):
+    """ An entry of a container """
+    @property
+    def key(self):
+        raise NotImplementedError
+    @property
+    def has_secret(self):
+        raise NotImplementedError
+    @property
+    def secret(self):
+        raise NotImplementedError
+    @property
+    def note(self):
+        raise NotImplementedError
+    def remove(self):
+        raise NotImplementedError
+
 class Container(object):
     """ Containers store secrets. """
-    def list(self, with_secrets=False):
-        """ Returns the key, note and, if with_secrets is True, the secret
-            of each entry in the container. """
+    def list(self):
+        """ Returns the entries of the container. """
         raise NotImplementedError
     def add(self, key, note, secret):
         """ adds a new entry (key, note, secret) """
         raise NotImplementedError
     def get(self, key):
-        """ Returns (note, secret) for the entry with key `key' """
+        """ Returns the entries with key `key' """
         raise NotImplementedError
     def save(self):
         """ Saves the changes made to the container to the safe. """
@@ -252,10 +268,84 @@ KD_APPEND  = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
 class ElGamalSafe(Safe):
     """ Default implementation using rerandomization of ElGamal. """
 
+    class MainEntry(Entry):
+        def __init__(self, container, index):
+            self.container = container
+            self.index = index
+
+        def _get_key(self):
+            return self.container.main_data.entries[self.index][0]
+        def _set_key(self, new_key):
+            self.container.main_data.entries[self.index][0] = new_key
+            self.container.unsaved_changes = True
+        key = property(_get_key, _set_key)
+
+        def _get_note(self):
+            return self.container.main_data.entries[self.index][1]
+        def _set_note(self, new_note):
+            self.container.main_data.entries[self.index][1] = new_note
+            self.container.unsaved_changes = True
+        note = property(_get_note, _set_note)
+
+        def _get_secret(self):
+            if self.container.secret_data is None:
+                raise MissingKey
+            return self.container.secret_data.entries[self.index]
+        def _set_secret(self, new_secret):
+            if self.container.secret_data is None:
+                raise MissingKey
+            self.container.secret_data.entries[self.index][1] = new_secret
+            self.container.unsaved_changes = True
+        secret = property(_get_secret, _set_secret)
+
+        @property
+        def has_secret(self):
+            return self.container.secret_data is not None
+
+    class AppendEntry(Entry):
+        def __init__(self, container, index, key, note, secret):
+            self.container = container
+            self.index = index
+            self._key = key
+            self._note = note
+            self._secret = secret
+
+        def _ensure_update_entry_exists(self):
+            if self.index not in self.container.append_data_updates:
+                self.container.append_data_updates[self.index] = [self._key,
+                                                                  self._note,
+                                                                  self._secret]
+        def _get_key(self):
+            return self._key
+        def _set_key(self, new_key):
+            self._ensure_update_entry_exists()
+            self.container.append_data_updates[self.index][0] = new_key
+            self.container.unsaved_changes = True
+        key = property(_get_key, _set_key)
+
+        def _get_note(self):
+            return self._note
+        def _set_note(self, new_note):
+            self._ensure_update_entry_exists()
+            self.container.append_data_updates[self.index][1] = new_note
+            self.container.unsaved_changes = True
+        note = property(_get_note, _set_note)
+
+        def _get_secret(self):
+            return self._secret
+        def _set_secret(self, new_secret):
+            self._ensure_update_entry_exists()
+            self.container.append_data_updates[self.index][2] = new_secret
+            self.container.unsaved_changes = True
+        secret = property(_get_secret, _set_secret)
+
+        @property
+        def has_secret(self):
+            return True
+
     class Container(Container):
         def __init__(self, safe, full_key, list_key, append_key, main_slice,
                         append_slice, main_data, append_data, secret_data):
-            # TODO move append_data entries to secret_data
             self.safe = safe
             self.full_key = full_key
             self.list_key = list_key
@@ -265,7 +355,9 @@ class ElGamalSafe(Safe):
             self.main_data = main_data
             self.append_data = append_data
             self.secret_data = secret_data
+            self.append_data_updates = {}
             self.unsaved_changes = False
+
         def save(self, randfunc=None, annex=False):
             if randfunc is None:
                 randfunc = Crypto.Random.new().read
@@ -287,60 +379,65 @@ class ElGamalSafe(Safe):
             # Write append slice
             if self.append_data:
                 assert self.append_key and self.append_slice
+                # First apply pending updates
+                for index, entry in self.append_data_updates.iteritems():
+                    self.append_data.entries[index] = self.safe.envelope.seal(
+                                    pol.serialization.son_to_string(entry),
+                                    self.append_data.pubkey)
                 append_pt = pol.serialization.son_to_string(self.append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
             self.unsaved_changes = False
-        def list(self, with_secrets=False):
+
+        def list(self):
             if not self.main_data:
-                raise MissingKey
-            if with_secrets and not self.secret_data:
                 raise MissingKey
             ret = []
-            if self.main_data:
-                for i, entry in enumerate(self.main_data.entries):
-                    ret.append([entry[0], entry[1],
-                                    self.secret_data.entries[i]]
-                            if with_secrets else entry)
+            for i in xrange(len(self.main_data.entries)):
+                ret.append(ElGamalSafe.MainEntry(self, i))
             if self.secret_data and self.append_data:
-                for raw_entry in self.append_data.entries:
-                    ret.append(pol.serialization.string_to_son(
-                                self.safe.envelope.open(raw_entry,
-                                        self.secret_data.privkey))[
-                                :3 if with_secrets else 2])
+                for i, raw_entry in enumerate(self.append_data.entries):
+                    ret.append(ElGamalSafe.AppendEntry(self, i,
+                                *self.safe.envelope.open(raw_entry,
+                                        self.secret_data.privkey)))
             return ret
+
         def get(self, key):
             if not self.main_data:
-                raise MissingKing
+                raise MissingKey
             for i, entry in enumerate(self.main_data.entries):
                 if entry[0] != key:
                     continue
-                if self.secret_data:
-                    yield (entry[0], entry[1], self.secret_data.entries[i])
-                else:
-                    yield (entry[0], entry[1])
+                yield ElGamalSafe.MainEntry(self, i)
             if self.secret_data and self.append_data:
-                for raw_entry in self.append_data.entries:
-                    yield son.serialization.string_to_son(
+                for i, raw_entry in enumerate(self.append_data.entries):
+                    entry = pol.serialization.string_to_son(
                                 self.safe.envelope.open(raw_entry,
                                             self.secret_data.privkey))
+                    if entry[0] != key:
+                        continue
+                    yield ElGamalSafe.AppendEntry(self, i, *entry)
+
         def add(self, key, note, secret):
             if self.secret_data:
                 self.main_data.entries.append((key, note))
                 self.secret_data.entries.append(secret)
             elif self.append_data:
-                self.append_data.entries.append(self.safe.envelope.seal(
-                        pol.serialization.son_to_string([key, note, secret]),
-                                    self.append_data.pubkey))
+                self.append_data.entries.append(None)
+                self.append_data_updates[
+                        len(self.append_data.entries)-1] = [key, note, secret]
             else:
                 raise MissingKey
             self.unsaved_changes = True
+
         @property
         def can_add(self):
-            return bool(self.secret_data)
+            return bool(self.secret_data) or bool(self.append_data)
+
         @property
         def id(self):
             return (self.append_slice.first_index if self.append_slice else
                             self.main_slice.first_index)
+
         def touch(self):
             self.unsaved_changes = True
 
@@ -517,6 +614,7 @@ class ElGamalSafe(Safe):
         return safe
 
     def open_containers(self, password, autosave=True,
+                            move_append_entries=True,
                             on_move_append_entries=None):
         """ Opens a container.
 
@@ -534,12 +632,14 @@ class ElGamalSafe(Safe):
             l.debug('open_containers:  found one @%s; type %s',
                             sl.first_index, access_data.type)
             container = self._open_container_with_access_data(
-                            access_data, on_move_append_entries)
+                            access_data, move_append_entries,
+                            on_move_append_entries)
             if autosave:
                 self.auto_save_containers.append(container)
             yield container
 
     def _open_container_with_access_data(self, access_data,
+                        move_append_entries=True,
                         on_move_append_entries=None):
         (full_key, list_key, append_key, main_slice, append_slice, main_data,
                 append_data, secret_data, append_index, main_index) = (None,
@@ -577,7 +677,7 @@ class ElGamalSafe(Safe):
             append_data = append_tuple(*pol.serialization.string_to_son(
                                     append_slice.value))
             # Move entries from append-data to the secret data
-            if append_data.entries and secret_data:
+            if append_data.entries and secret_data and move_append_entries:
                 new_entries = []
                 for raw_entry in append_data.entries:
                     new_entries.append(pol.serialization.string_to_son(
@@ -614,7 +714,7 @@ class ElGamalSafe(Safe):
         nblocks_mainslice = nblocks - 1
         if list_password:
             nblocks_mainslice -= 1
-        if append_password:
+        if append_password or list_password:
             nblocks_mainslice -= 1 + append_slice_size
         # Create slices
         main_slice = self._new_slice(nblocks_mainslice)

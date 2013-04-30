@@ -16,6 +16,7 @@ import getpass
 import pprint
 import shlex
 import time
+import math
 import sys
 import csv
 
@@ -74,6 +75,8 @@ class Program(object):
                             'interactively')
         p_init_a.add_argument('--i-know-its-unsafe', action='store_true',
                     help='Required for obviously unsafe actions')
+        p_init_a.add_argument('--blocks', '-N', type=int, default=1024,
+                    help='Number of blocks in the safe')
         p_init.set_defaults(func=self.cmd_init)
 
         # pol list
@@ -393,17 +396,20 @@ class Program(object):
             elif step == 'g':
                 progressbar.end()
         try:
+            blocks_per_container = int(math.floor(self.args.blocks / 6.0))
             with pol.safe.create(os.path.expanduser(self.args.safe),
                                  override=self.args.force,
                                  nworkers=self.args.workers,
                                  gp_bits=self.args.rerand_bits,
                                  progress=progress,
                                  precomputed_gp=self.args.precomputed_gp,
-                                 use_threads=self.args.threads) as safe:
+                                 use_threads=self.args.threads,
+                                 n_blocks=self.args.blocks) as safe:
                 for i, mlapw in enumerate(pws):
                     mpw, lpw, apw = mlapw
                     print '  allocating container #%s ...' % (i+1)
-                    c = safe.new_container(mpw, lpw, apw)
+                    c = safe.new_container(mpw, lpw, apw,
+                                    nblocks=blocks_per_container)
                 print '  trashing freespace ...'
                 safe.trash_freespace()
         except pol.safe.SafeAlreadyExistsError:

@@ -7,15 +7,23 @@ import Crypto.Random.random
 
 l = logging.getLogger(__name__)
 
-alphabet = ('qwertyuiopasdfghjklzxcvbnm1234567890QWERTYUIOPASDFGHJKLZXCVBNM'+
-            '!@#$%^&*(){}[]-=_+,.<>/?')
+ALPHABET = {'dense':
+                'qwertyuiopasdfghjklzxcvbnm1234567890QWERTYUIOPASDFGHJKLZ'+
+                'XCVBNM!@#$%^&*(){}[]-=_+,.<>/?',
+            'alphanum':
+                'qwertyuiopasdfghjklzxcvbnm1234567890QWERTYUIOPASDFGHJKLZ'+
+                'XCVBNM'}
+kinds = ALPHABET.keys()
 
-# TODO add more options
-def generate_password(length=None, entropy=None):
-    ret = ''
+# TODO xkcd kind
+def generate_password(length=None, entropy=None, kind='dense'):
+    if kind not in ALPHABET:
+        raise ValueError("That `kind' of password is not supported.")
     if length and entropy:
         raise ValueError("Only one of `length' and `entropy' "+
                             "should be specified")
+    ret = ''
+    alphabet = ALPHABET[kind]
     if not (length or entropy):
         entropy = 128
     if not length:

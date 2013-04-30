@@ -92,7 +92,7 @@ class Program(object):
 
         # pol generate
         p_generate = subparsers.add_parser('generate', add_help=False,
-                    help='Generates and stores a password')
+                    help='Generate and store a password')
         p_generate.add_argument('key')
         p_generate_b = p_generate.add_argument_group('basic options')
         p_generate_b.add_argument('-h', '--help', action='help',
@@ -100,6 +100,9 @@ class Program(object):
         p_generate_b.add_argument('--note', '-n')
         p_generate_b.add_argument('--no-copy', '-N', action='store_true',
                     help='Do not copy secret to clipboard.')
+        p_generate_b.add_argument('--kind', '-k', default='dense',
+                    choices=pol.passgen.kinds,
+                    help='Kind of password to generate.')
         p_generate_s = p_generate_b.add_mutually_exclusive_group()
         p_generate_s.add_argument('--entropy', '-e', type=int, default=None,
                                 metavar='N',
@@ -574,7 +577,8 @@ class Program(object):
                 return -2
     def cmd_generate(self):
         pw = pol.passgen.generate_password(length=self.args.length,
-                                           entropy=self.args.entropy)
+                                           entropy=self.args.entropy,
+                                           kind=self.args.kind)
         found_one = False
         stored = False
         with self._open_safe() as safe:

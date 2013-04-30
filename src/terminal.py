@@ -10,7 +10,10 @@ import fcntl
 import sys
 import os
 
-import zxcvbn
+import demandimport
+
+with demandimport.ignored('simplejson'):
+    import zxcvbn
 
 l = logging.getLogger(__name__)
 

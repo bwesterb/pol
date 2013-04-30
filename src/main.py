@@ -719,6 +719,8 @@ class Program(object):
         return pol.speed.main(self)
 
     def cmd_shell(self):
+        with demandimport.disabled():
+            import readline
         # TODO a more stateful shell would be nice: then we only have to
         #       ask for the password and rerandomize once.
         if not os.path.exists(os.path.expanduser(self.args.safe)):

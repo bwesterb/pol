@@ -100,6 +100,13 @@ class Program(object):
         p_generate_b.add_argument('--note', '-n')
         p_generate_b.add_argument('--no-copy', '-N', action='store_true',
                     help='Do not copy secret to clipboard.')
+        p_generate_s = p_generate_b.add_mutually_exclusive_group()
+        p_generate_s.add_argument('--entropy', '-e', type=int, default=None,
+                                metavar='N',
+                    help='Desired strength of password')
+        p_generate_s.add_argument('--length', '-l', type=int, default=None,
+                                metavar='N',
+                    help='Desired length of password')
         p_generate_a = p_generate.add_argument_group('advanced options')
         p_generate_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add password to')
@@ -566,7 +573,8 @@ class Program(object):
                 print 'No append access to the containers opened by this password'
                 return -2
     def cmd_generate(self):
-        pw = pol.passgen.generate_password()
+        pw = pol.passgen.generate_password(length=self.args.length,
+                                           entropy=self.args.entropy)
         found_one = False
         stored = False
         with self._open_safe() as safe:

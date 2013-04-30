@@ -455,6 +455,8 @@ class Program(object):
                         if not entry.has_secret:
                             continue
                         entries.append((container, entry))
+                except pol.safe.MissingKey:
+                    continue
                 except KeyError:
                     continue
             if not found_one:
@@ -490,6 +492,8 @@ class Program(object):
                         if not entry.has_secret:
                             continue
                         entries.append((container, entry))
+                except pol.safe.MissingKey:
+                    continue
                 except KeyError:
                     continue
             if not found_one:

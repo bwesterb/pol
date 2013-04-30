@@ -93,11 +93,13 @@ class Program(object):
         # pol generate
         p_generate = subparsers.add_parser('generate', add_help=False,
                     help='Generate and store a password')
-        p_generate.add_argument('key')
+        p_generate.add_argument('key', nargs='?', default=None)
         p_generate_b = p_generate.add_argument_group('basic options')
         p_generate_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
         p_generate_b.add_argument('--note', '-n')
+        p_generate_b.add_argument('--stdout', '-s', action='store_true',
+                    help='write password to stdout')
         p_generate_b.add_argument('--no-copy', '-N', action='store_true',
                     help='Do not copy secret to clipboard.')
         p_generate_b.add_argument('--kind', '-k', default='dense',
@@ -579,6 +581,23 @@ class Program(object):
         pw = pol.passgen.generate_password(length=self.args.length,
                                            entropy=self.args.entropy,
                                            kind=self.args.kind)
+        if self.args.key is None:
+            if self.args.stdout:
+                sys.stdout.write(pw)
+                sys.stdout.write("\n")
+                return
+            if self.args.no_copy:
+                return
+            if not pol.clipboard.available:
+                sys.stderr.write('Clipboard access not available.\n')
+                sys.stderr.write('Use --stdout to write to print password instead.\n')
+                return -15
+            pol.clipboard.copy(pw)
+            sys.stderr.write('Copied password to clipboard.  '+
+                                'Press any key to clear ...\n')
+            pol.terminal.wait_for_keypress()
+            pol.clipboard.clear()
+            return
         found_one = False
         stored = False
         with self._open_safe() as safe:
@@ -596,19 +615,24 @@ class Program(object):
                 except pol.safe.MissingKey:
                     pass
             if not found_one:
-                print 'The password did not open any container.'
+                sys.stderr.write('The password did not open any container.\n')
                 return -1
             if found_one and not stored:
-                print 'No append access to the containers opened by this password'
+                sys.stderr.write('No append access to the containers opened '+
+                                        'by this password\n')
                 return -2
-            if not pol.clipboard.available:
-                print 'Password stored.  Clipboard access not available.'
-                print 'Use `pol get\' to show password'
+            if self.args.stdout:
+                sys.stdout.write(pw)
+                sys.stdout.write("\n")
                 return
             if self.args.no_copy:
                 return
+            if not pol.clipboard.available:
+                sys.stderr.write('Password stored.  Clipboard access not available.\n')
+                sys.stderr.write('Use `pol get\' to show password\n')
+                return
             pol.clipboard.copy(pw)
-            print 'Copied password to clipboard.  Press any key to clear ...'
+            sys.stderr.write('Copied password to clipboard.  Press any key to clear ...\n')
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()
             # TODO do rerandomization in parallel

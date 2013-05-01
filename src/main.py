@@ -134,6 +134,7 @@ class Program(object):
                     help=('Desired minimal time to brute force when '+
                             'allowed a billion tries per second'))
         p_generate_s.add_argument('--sha-crack-cost', '-S', type=int,
+                    metavar='DOLLARS',
                     help=('Desired minimal amount of dollars required to '+
                             'brute force if hashed with SHA-256'))
         p_generate_a = p_generate.add_argument_group('advanced options')

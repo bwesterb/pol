@@ -15,12 +15,15 @@ ALPHABET = {'dense':
             'alphanum':
                 'qwertyuiopasdfghjklzxcvbnm1234567890QWERTYUIOPASDFGHJKLZ'+
                 'XCVBNM'}
-kinds = tuple(ALPHABET.keys()) + ('english',)
+kinds = tuple(ALPHABET.keys()) + ('english', 'dutch')
 
 def generate_password(length=None, entropy=None, kind='dense'):
     add_spaces = False
     if kind == 'english':
         from pol.passgen.english import words as alphabet
+        add_spaces = True
+    elif kind == 'dutch':
+        from pol.passgen.dutch import words as alphabet
         add_spaces = True
     else:
         if kind not in ALPHABET:

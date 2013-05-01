@@ -33,6 +33,19 @@ import pol.speed
 
 import yappi
 
+
+cracktimes = {'seconds':     10,
+              'minutes':     10*60,
+              'hours':       10*60*60,
+              'days':        10*60*60*24,
+              'months':      10*60*60*24*30,
+              'years':       10*60*60*24*365,
+              'decades':     10*60*60*24*365*10,
+              'centuries':   10*60*60*24*365*100,
+              'millennia':   10*60*60*24*365*1000,
+              'ages':        10*60*60*24*365*1000000,
+              'astronomical':10*60*60*24*365*1000000000}
+
 class Program(object):
     def parse_args(self, argv):
         # Common
@@ -112,6 +125,14 @@ class Program(object):
         p_generate_s.add_argument('--length', '-l', type=int, default=None,
                                 metavar='N',
                     help='Desired length of password')
+        p_generate_s.add_argument('--web-crack-time', '-w',
+                    choices=cracktimes.keys(),
+                    help=('Desired minimal time to brute force when '+
+                            'allowed one try per second'))
+        p_generate_s.add_argument('--hash-crack-time', '-H',
+                    choices=cracktimes.keys(),
+                    help=('Desired minimal time to brute force when '+
+                            'allowed a billion tries per second'))
         p_generate_a = p_generate.add_argument_group('advanced options')
         p_generate_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add password to')
@@ -578,6 +599,12 @@ class Program(object):
                 print 'No append access to the containers opened by this password'
                 return -2
     def cmd_generate(self):
+        if self.args.hash_crack_time:
+            self.args.entropy = math.log(1000000000 * cracktimes[
+                                        self.args.hash_crack_time], 2)
+        if self.args.web_crack_time:
+            self.args.entropy = math.log(cracktimes[
+                                        self.args.web_crack_time], 2)
         pw = pol.passgen.generate_password(length=self.args.length,
                                            entropy=self.args.entropy,
                                            kind=self.args.kind)

@@ -133,6 +133,9 @@ class Program(object):
                     choices=cracktimes.keys(),
                     help=('Desired minimal time to brute force when '+
                             'allowed a billion tries per second'))
+        p_generate_s.add_argument('--sha-crack-cost', '-S', type=int,
+                    help=('Desired minimal amount of dollars required to '+
+                            'brute force if hashed with SHA-256'))
         p_generate_a = p_generate.add_argument_group('advanced options')
         p_generate_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add password to')
@@ -605,6 +608,12 @@ class Program(object):
         if self.args.web_crack_time:
             self.args.entropy = math.log(cracktimes[
                                         self.args.web_crack_time], 2)
+        if self.args.sha_crack_cost:
+            self.args.entropy = math.log(self.args.sha_crack_cost
+                                            * 500000000, 2)
+            # We use the bitcoin mining rate as an estimator
+            #   http://blockchain.info/stats
+            # TODO keep up-to-date
         pw = pol.passgen.generate_password(length=self.args.length,
                                            entropy=self.args.entropy,
                                            kind=self.args.kind)

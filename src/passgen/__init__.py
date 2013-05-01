@@ -5,6 +5,8 @@ import math
 
 import Crypto.Random.random
 
+import pkg_resources
+
 l = logging.getLogger(__name__)
 
 ALPHABET = {'dense':
@@ -13,21 +15,27 @@ ALPHABET = {'dense':
             'alphanum':
                 'qwertyuiopasdfghjklzxcvbnm1234567890QWERTYUIOPASDFGHJKLZ'+
                 'XCVBNM'}
-kinds = ALPHABET.keys()
+kinds = tuple(ALPHABET.keys()) + ('english',)
 
-# TODO xkcd kind
 def generate_password(length=None, entropy=None, kind='dense'):
-    if kind not in ALPHABET:
-        raise ValueError("That `kind' of password is not supported.")
+    add_spaces = False
+    if kind == 'english':
+        from pol.passgen.english import words as alphabet
+        add_spaces = True
+    else:
+        if kind not in ALPHABET:
+            raise ValueError("That `kind' of password is not supported.")
+        alphabet = ALPHABET[kind]
     if length and entropy:
         raise ValueError("Only one of `length' and `entropy' "+
                             "should be specified")
-    ret = ''
-    alphabet = ALPHABET[kind]
+    bits = []
     if not (length or entropy):
         entropy = 128
     if not length:
         length = int(math.ceil(entropy / math.log(len(alphabet), 2)))
     for i in xrange(length):
-        ret += Crypto.Random.random.choice(alphabet)
-    return ret
+        bits.append(Crypto.Random.random.choice(alphabet))
+    if add_spaces:
+        return ' '.join(bits)
+    return ''.join(bits)

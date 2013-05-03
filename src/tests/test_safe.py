@@ -110,6 +110,24 @@ class TestElgamalSafe(unittest.TestCase):
         c.save()
         c = list(safe.open_containers('l', move_append_entries=False))[0]
         self._check_container(c)
+    def test_removal(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=70)
+        c = list(safe.open_containers('a'))[0]
+        self._fill_container(c)
+        c.save()
+        c = list(safe.open_containers('m', move_append_entries=False))[0]
+        list(c.get('key1'))[0].remove()
+        list(c.get('key2'))[0].remove()
+        c.save()
+        c = list(safe.open_containers('m'))[0]
+        list(c.get('key3'))[0].remove()
+        list(c.get('key4'))[0].remove()
+        list(c.get('key4'))[0].remove()
+        c.save()
+        c = list(safe.open_containers('m'))[0]
+        self.assertEqual(len(c.list()), 0)
+
     def _fill_container(self, c):
         c.add('key1', 'note1', 'secret1')
         c.add('key2', 'note2', 'secret2')

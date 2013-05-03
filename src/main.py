@@ -53,7 +53,6 @@ cracktimes = {'seconds':     10,
 
 # TODO add commands
 #   pol import
-#       remove
 #       rename
 #       regenerate
 #       change-password
@@ -214,6 +213,21 @@ class Program(object):
         p_get_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to get secret from')
         p_get.set_defaults(func=self.cmd_get)
+
+        # pol remove
+        p_remove = subparsers.add_parser('remove', add_help=False,
+                    help='Removes an entry')
+        p_remove.add_argument('key')
+        p_remove_b = p_remove.add_argument_group('basic options')
+        p_remove_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_remove_b.add_argument('-n', '--number', type=int, metavar='N',
+                                default=None,
+                    help='Pick, if multiple entries match, the Nth')
+        p_remove_a = p_remove.add_argument_group('advanced options')
+        p_remove_a.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to remove entry from')
+        p_remove.set_defaults(func=self.cmd_remove)
 
         # pol touch
         p_touch = subparsers.add_parser('touch', add_help=False,
@@ -539,6 +553,47 @@ class Program(object):
             entry = entries[n][1]
             sys.stderr.write(' note: %s\n' % repr(entry.note))
             print entry.secret
+
+    def cmd_remove(self):
+        with self._open_safe() as safe:
+            found_one = False
+            entries = []
+            for container in safe.open_containers(
+                    self.args.password if self.args.password
+                            else getpass.getpass('Enter password: '),
+                        on_move_append_entries=self._on_move_append_entries):
+                if not found_one:
+                    found_one = True
+                try:
+                    for entry in container.get(self.args.key):
+                        if not entry.has_secret:
+                            continue
+                        entries.append((container, entry))
+                except pol.safe.MissingKey:
+                    continue
+                except KeyError:
+                    continue
+            if not found_one:
+                sys.stderr.write('The password did not open any container.\n')
+                return -1
+            if not entries:
+                sys.stderr.write('No entries found.\n')
+                return -4
+            if len(entries) > 1 and not self.args.number:
+                sys.stderr.write('Multiple entries found:\n')
+                sys.stderr.write('\n')
+                for n, container_entry in enumerate(entries):
+                    container, entry = container_entry
+                    sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
+                            repr(entry.note) if entry.note else ''))
+                sys.stderr.write('\n')
+                sys.stderr.write('Use `-n N\' to pick one.\n')
+                return -8
+            n = self.args.number - 1 if self.args.number else 0
+            if n < 0 or n >= len(entries):
+                sys.stderr.write('Entry number out of range.\n')
+                return -15
+            entries[n][1].remove()
 
     def cmd_copy(self):
         if not pol.clipboard.available:

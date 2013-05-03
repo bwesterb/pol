@@ -298,6 +298,13 @@ class ElGamalSafe(Safe):
             self.container.unsaved_changes = True
         secret = property(_get_secret, _set_secret)
 
+        def remove(self):
+            if self.container.secret_data is None:
+                raise MissingKey
+            self.container.secret_data.entries[self.index] = None
+            self.container.main_data.entries[self.index] = None
+            self.container.unsaved_changes = True
+
         @property
         def has_secret(self):
             return self.container.secret_data is not None
@@ -339,6 +346,11 @@ class ElGamalSafe(Safe):
             self.container.unsaved_changes = True
         secret = property(_get_secret, _set_secret)
 
+        def remove(self):
+            self._ensure_update_entry_exists()
+            self.container.append_data_updates[self.index] = None
+            self.container.unsaved_changes = True
+
         @property
         def has_secret(self):
             return True
@@ -367,24 +379,42 @@ class ElGamalSafe(Safe):
                 sbs = self.safe.cipher.blocksize
                 iv = randfunc(sbs)
                 cipherstream = self.safe._cipherstream(self.full_key, iv)
-                secrets_pt = pol.serialization.son_to_string(self.secret_data)
+                # Filter entries that are marked for deletion
+                secret_data = self.secret_data._replace(
+                        entries=filter(lambda x: x is not None,
+                                        self.secret_data.entries))
+                # Serialize and store
+                secrets_pt = pol.serialization.son_to_string(secret_data)
                 secrets_ct = cipherstream.encrypt(secrets_pt)
                 self.main_data = self.main_data._replace(iv=iv,
                                         secrets=secrets_ct)
             # Write main slice
             if self.main_data:
                 assert self.list_key and self.main_slice
-                main_pt = pol.serialization.son_to_string(self.main_data)
+                # Filter entries that are marked for deletion
+                main_data = self.main_data._replace(
+                        entries=filter(lambda x: x is not None,
+                                        self.main_data.entries))
+                # Serialize and store
+                main_pt = pol.serialization.son_to_string(main_data)
                 self.main_slice.store(self.list_key, main_pt, annex=annex)
             # Write append slice
             if self.append_data:
                 assert self.append_key and self.append_slice
                 # First apply pending updates
                 for index, entry in self.append_data_updates.iteritems():
-                    self.append_data.entries[index] = self.safe.envelope.seal(
+                    if entry is None:
+                        self.append_data.entries[index] = None
+                    else:
+                        self.append_data.entries[index] = self.safe.envelope.seal(
                                     pol.serialization.son_to_string(entry),
                                     self.append_data.pubkey)
-                append_pt = pol.serialization.son_to_string(self.append_data)
+                # Then, filter entries marked for deletion
+                append_data = self.append_data._replace(
+                        entries=filter(lambda x: x is not None,
+                                        self.append_data.entries))
+                # Serialize and store
+                append_pt = pol.serialization.son_to_string(append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
             self.unsaved_changes = False
 
@@ -392,7 +422,9 @@ class ElGamalSafe(Safe):
             if not self.main_data:
                 raise MissingKey
             ret = []
-            for i in xrange(len(self.main_data.entries)):
+            for i, entry in enumerate(self.main_data.entries):
+                if entry is None:
+                    continue
                 ret.append(ElGamalSafe.MainEntry(self, i))
             if self.secret_data and self.append_data:
                 for i, raw_entry in enumerate(self.append_data.entries):
@@ -405,11 +437,15 @@ class ElGamalSafe(Safe):
             if not self.main_data:
                 raise MissingKey
             for i, entry in enumerate(self.main_data.entries):
+                if entry is None:
+                    continue
                 if entry[0] != key:
                     continue
                 yield ElGamalSafe.MainEntry(self, i)
             if self.secret_data and self.append_data:
                 for i, raw_entry in enumerate(self.append_data.entries):
+                    if raw_entry is None:
+                        continue
                     entry = pol.serialization.string_to_son(
                                 self.safe.envelope.open(raw_entry,
                                             self.secret_data.privkey))

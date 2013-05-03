@@ -294,7 +294,7 @@ class ElGamalSafe(Safe):
         def _set_secret(self, new_secret):
             if self.container.secret_data is None:
                 raise MissingKey
-            self.container.secret_data.entries[self.index][1] = new_secret
+            self.container.secret_data.entries[self.index] = new_secret
             self.container.unsaved_changes = True
         secret = property(_get_secret, _set_secret)
 

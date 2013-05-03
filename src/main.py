@@ -50,6 +50,13 @@ cracktimes = {'seconds':     10,
               'ages':        10*60*60*24*365*1000000,
               'astronomical':10*60*60*24*365*1000000000}
 
+# TODO add commands
+#   pol import
+#       remove
+#       rename
+#       regenerate
+#       change-password
+
 class Program(object):
     def parse_args(self, argv):
         # Common
@@ -895,6 +902,7 @@ class Program(object):
         except Exception:
             self._handle_uncaught_exception()
             return -12
+        # TODO gracefully handle SafeFullError
     def _handle_uncaught_exception(self):
         sys.stderr.write("\n")
         sys.stderr.write("An unhandled exception occured:\n")

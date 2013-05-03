@@ -173,6 +173,9 @@ class Program(object):
         p_copy_b = p_copy.add_argument_group('basic options')
         p_copy_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
+        p_copy_b.add_argument('-n', '--number', type=int, metavar='N',
+                                default=None,
+                    help='Pick, if multiple entries match, the Nth')
         p_copy_a = p_copy.add_argument_group('advanced options')
         p_copy_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to copy secret from')
@@ -563,29 +566,26 @@ class Program(object):
             if not entries:
                 print 'No entries found'
                 return -4
-            if len(entries) == 1:
-                entry = entries[0][1]
-                print ' note: %s' % repr(entry.note)
-                print 'Copied secret to clipboard.  Press any key to clear ...'
-                pol.clipboard.copy(entry.secret)
-                pol.terminal.wait_for_keypress()
-                pol.clipboard.clear()
-                return
-            print '%s entries found.' % len(entries)
-            print
-            first = True
-            for i, tmp in enumerate(entries):
-                if first:
-                    first = False
-                else:
-                    print
-                container, entry = tmp
-                print 'Entry #%s from container @%s' % (i+1, container.id)
-                print ' note: %s' % repr(entry.note)
-                print 'Copied secret to clipboard.  Press any key to clear ...'
-                pol.clipboard.copy(entry.secret)
-                pol.terminal.wait_for_keypress()
-                pol.clipboard.clear()
+            if len(entries) > 1 and not self.args.number:
+                sys.stderr.write('Multiple entries found:\n')
+                sys.stderr.write('\n')
+                for n, container_entry in enumerate(entries):
+                    container, entry = container_entry
+                    sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
+                            repr(entry.note) if entry.note else ''))
+                sys.stderr.write('\n')
+                sys.stderr.write('Use `-n N\' to pick one.\n')
+                return -8
+            n = self.args.number - 1 if self.args.number else 0
+            if n < 0 or n >= len(entries):
+                sys.stderr.write('Entry number out of range.\n')
+                return -15
+            entry = entries[n][1]
+            print ' note: %s' % repr(entry.note)
+            print 'Copied secret to clipboard.  Press any key to clear ...'
+            pol.clipboard.copy(entry.secret)
+            pol.terminal.wait_for_keypress()
+            pol.clipboard.clear()
     def cmd_paste(self):
         if not pol.clipboard.available:
             print 'Clipboard access not available.'

@@ -35,6 +35,9 @@ import pol.speed
 import yappi
 
 
+# Used among others by `pol generate --hash-crack-time years'
+cracktime_names = ('seconds', 'minutes', 'hours', 'days', 'months', 'years',
+                   'decades', 'centuries', 'millennia', 'ages', 'astronomical')
 cracktimes = {'seconds':     10,
               'minutes':     10*60,
               'hours':       10*60*60,
@@ -127,11 +130,11 @@ class Program(object):
                                 metavar='N',
                     help='Desired length of password')
         p_generate_s.add_argument('--web-crack-time', '-w',
-                    choices=cracktimes.keys(),
+                    choices=cracktime_names,
                     help=('Desired minimal time to brute force when '+
                             'allowed one try per second'))
         p_generate_s.add_argument('--hash-crack-time', '-H',
-                    choices=cracktimes.keys(),
+                    choices=cracktime_names,
                     help=('Desired minimal time to brute force when '+
                             'allowed a billion tries per second'))
         p_generate_s.add_argument('--sha-crack-cost', '-S', type=int,

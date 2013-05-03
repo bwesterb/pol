@@ -9,7 +9,7 @@ pol /pɵl/ is a password manager with two important features:
    1. A nice interface.  Want to generate a password?
       
       ```
-      $ pol generate github -n "my username is John Doo"
+      $ pol generate github "my username is John Doo"
       Enter (append-)password: 
       Copied password to clipboard.  Press any key to clear ...
       ```

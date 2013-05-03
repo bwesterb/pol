@@ -121,7 +121,7 @@ class Program(object):
         p_generate_b = p_generate.add_argument_group('basic options')
         p_generate_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
-        p_generate_b.add_argument('--note', '-n')
+        p_generate_b.add_argument('note', nargs='?')
         p_generate_b.add_argument('--stdout', '-s', action='store_true',
                     help='write password to stdout')
         p_generate_b.add_argument('--no-copy', '-N', action='store_true',
@@ -160,7 +160,7 @@ class Program(object):
         p_paste_b = p_paste.add_argument_group('basic options')
         p_paste_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
-        p_paste_b.add_argument('--note', '-n')
+        p_paste_b.add_argument('note', nargs='?')
         p_paste_a = p_paste.add_argument_group('advanced options')
         p_paste_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add secret to')
@@ -185,7 +185,7 @@ class Program(object):
         p_put_b = p_put.add_argument_group('basic options')
         p_put_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
-        p_put_b.add_argument('--note', '-n')
+        p_put_b.add_argument('note', nargs='?')
         p_put_b.add_argument('--secret', '-s',
                     help='The secret to store.  If none is specified, reads '+
                          'secret from stdin.')

@@ -20,6 +20,7 @@ import time
 import math
 import sys
 import csv
+import re
 
 import pol.safe
 import pol.passgen
@@ -109,6 +110,8 @@ class Program(object):
         p_list_b = p_list.add_argument_group('basic options')
         p_list_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
+        p_list_b.add_argument('regex', nargs='?',
+                    help='Only show entries with keys matching this regex')
         p_list_a = p_list.add_argument_group('basic options')
         p_list_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to list')
@@ -699,6 +702,14 @@ class Program(object):
             # TODO do rerandomization in parallel
 
     def cmd_list(self):
+        if self.args.regex:
+            try:
+                regex = re.compile(self.args.regex)
+            except re.error as e:
+                sys.stderr.write("Invalid regex: %s\n" % e.message)
+                return -16
+        else:
+            regex = None
         with self._open_safe() as safe:
             found_one = False
             for container in safe.open_containers(
@@ -713,11 +724,16 @@ class Program(object):
                 try:
                     got_entry = False
                     for entry in container.list():
+                        if regex and not regex.match(entry.key):
+                            continue
                         got_entry = True
                         print ' %-20s %s' % (entry.key, repr(entry.note)
                                                     if entry.note else '')
                     if not got_entry:
-                        print '  (empty)'
+                        if regex:
+                            print '  (no matching entries)'
+                        else:
+                            print '  (empty)'
                 except pol.safe.MissingKey:
                     print '  (no list access)'
             if not found_one:

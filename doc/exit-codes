@@ -1,0 +1,15 @@
+0    All ok!
+-1   Password did not open any container
+-2   No append access granted by the password provided
+-3   Clipboard/stdin empty
+-4   No matching entries found
+-5   Safe not found
+-6   Safe locked
+-7   Clipboard access unavailable
+-8   Multiple entries matched
+-9   Unsafe configuration without --i-know-its-unsafe
+-10  Safe already exists
+-11  File already exists
+-12  Unexpected error
+-13  Specified safe does not seem to have the right format
+-14  Keyboard interrupt

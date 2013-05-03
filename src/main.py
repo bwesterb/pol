@@ -4,6 +4,7 @@
 
     Contains the argument parser and CLI interaction. """
 
+# demandimport delays the import of modules until they are actually used.
 import demandimport
 demandimport.enable()
 

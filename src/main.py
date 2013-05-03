@@ -533,7 +533,6 @@ class Program(object):
             entry = entries[n][1]
             sys.stderr.write(' note: %s\n' % repr(entry.note))
             print entry.secret
-            return
 
     def cmd_copy(self):
         if not pol.clipboard.available:

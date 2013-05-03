@@ -201,6 +201,9 @@ class Program(object):
         p_get_b = p_get.add_argument_group('basic options')
         p_get_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
+        p_get_b.add_argument('-n', '--number', type=int, metavar='N',
+                                default=None,
+                    help='Pick, if multiple entries match, the Nth')
         p_get_a = p_get.add_argument_group('advanced options')
         p_get_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to get secret from')
@@ -513,10 +516,21 @@ class Program(object):
             if not entries:
                 sys.stderr.write('No entries found.\n')
                 return -4
-            if len(entries) > 1:
-                sys.stderr.write("Multiple entries found.\n")
+            if len(entries) > 1 and not self.args.number:
+                sys.stderr.write('Multiple entries found:\n')
+                sys.stderr.write('\n')
+                for n, container_entry in enumerate(entries):
+                    container, entry = container_entry
+                    sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
+                            repr(entry.note) if entry.note else ''))
+                sys.stderr.write('\n')
+                sys.stderr.write('Use `-n N\' to pick one.\n')
                 return -8
-            entry = entries[0][1]
+            n = self.args.number - 1 if self.args.number else 0
+            if n < 0 or n >= len(entries):
+                sys.stderr.write('Entry number out of range.\n')
+                return -15
+            entry = entries[n][1]
             sys.stderr.write(' note: %s\n' % repr(entry.note))
             print entry.secret
             return

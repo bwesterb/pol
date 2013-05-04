@@ -5,4 +5,10 @@
 safe: /home/user/.other-safe
 
 
+# Default list of keyfiles.  By default this list is empty.
+keyfiles:
+ - /home/user/.first-keyfile
+ - /media/usb/second-keyfile
+
+
 # vim: ft=yaml

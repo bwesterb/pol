@@ -37,6 +37,8 @@ import pol.speed
 import yappi
 import yaml
 
+l = logging.getLogger(__name__)
+
 
 # Used among others by `pol generate --hash-crack-time years'
 cracktime_names = ('seconds', 'minutes', 'hours', 'days', 'months', 'years',
@@ -348,8 +350,10 @@ class Program(object):
             if self.args.config_file:
                 sys.stderr.write("%s: no such file\n" % path)
                 return -17
+            l.debug('No configuration file found.')
             self.config = {}
             return
+        l.debug('Loading configuration file %s ...', path)
         with open(path) as f:
             try:
                 self.config = yaml.load(f)
@@ -357,6 +361,7 @@ class Program(object):
                 sys.stderr.write("%s: error in configuration file:\n%s\n" % (
                                 path, e))
                 return -18
+        l.debug('    ... done')
 
     def main(self, argv):
         try:
@@ -377,11 +382,6 @@ class Program(object):
                 profiling = True
                 yappi.start()
 
-            # Load configuration
-            ret = self.load_configuration()
-            if ret:
-                return ret
-
             # Set up logging
             extra_logging_config = {}
             if self.args.verbosity >= 2:
@@ -393,6 +393,11 @@ class Program(object):
             else:
                 level = logging.WARNING
             logging.basicConfig(level=level, **extra_logging_config)
+
+            # Load configuration
+            ret = self.load_configuration()
+            if ret:
+                return ret
 
             # Set some global state
             self.safe_path = (self.args.safe if self.args.safe

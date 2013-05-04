@@ -35,6 +35,7 @@ import pol.importers.psafe3
 import pol.speed
 
 import yappi
+import yaml
 
 
 # Used among others by `pol generate --hash-crack-time years'
@@ -63,7 +64,7 @@ class Program(object):
         # Common
         parser = argparse.ArgumentParser(add_help=False)
         g_basic = parser.add_argument_group('basic options')
-        g_basic.add_argument('--safe', '-s', type=str, default='~/.pol',
+        g_basic.add_argument('--safe', '-s', type=str,
                             metavar='PATH',
                     help='Path to safe')
         g_basic.add_argument('-h', '--help', action='help',
@@ -78,6 +79,8 @@ class Program(object):
                     help='Use worker threads instead of processes')
         g_advanced.add_argument('--profile', '-p', action='store_true',
                     help='Profile performance of main process')
+        g_advanced.add_argument('--config-file', '-C', type=str, metavar='PATH',
+                    help='Path to pol configuration file.')
         subparsers = parser.add_subparsers(title='commands')
 
         # pol init
@@ -336,8 +339,24 @@ class Program(object):
                     help='show this help message and exit')
         p_nop_b.set_defaults(func=self.cmd_nop)
 
-
         self.args = parser.parse_args(argv)
+
+    def load_configuration(self):
+        path = (self.args.config_file if self.args.config_file
+                    else os.path.expanduser('~/.polrc'))
+        if not os.path.exists(path):
+            if self.args.config_file:
+                sys.stderr.write("%s: no such file\n" % path)
+                return -17
+            self.config = {}
+            return
+        with open(path) as f:
+            try:
+                self.config = yaml.load(f)
+            except yaml.YAMLError as e:
+                sys.stderr.write("%s: error in configuration file:\n%s\n" % (
+                                path, e))
+                return -18
 
     def main(self, argv):
         try:
@@ -353,6 +372,16 @@ class Program(object):
             # Parse arguments
             self.parse_args(argv)
 
+            # Profile?
+            if self.args.profile and not profiling:
+                profiling = True
+                yappi.start()
+
+            # Load configuration
+            ret = self.load_configuration()
+            if ret:
+                return ret
+
             # Set up logging
             extra_logging_config = {}
             if self.args.verbosity >= 2:
@@ -365,10 +394,11 @@ class Program(object):
                 level = logging.WARNING
             logging.basicConfig(level=level, **extra_logging_config)
 
-            # Profile?
-            if self.args.profile and not profiling:
-                profiling = True
-                yappi.start()
+            # Set some global state
+            self.safe_path = (self.args.safe if self.args.safe
+                                else (self.config['safe']
+                                        if 'safe' in self.config
+                                    else os.path.expanduser('~/.pol')))
 
             # Execute command
             ret = self._run_command()
@@ -382,9 +412,8 @@ class Program(object):
             self._handle_uncaught_exception()
 
     def cmd_init(self):
-        if (os.path.exists(os.path.expanduser(self.args.safe))
-                and not self.args.force):
-            print '%s exists.  Use -f to override.' % self.args.safe
+        if (os.path.exists(self.safe_path) and not self.args.force):
+            print '%s exists.  Use -f to override.' % self.safe_path
             return -10
         if self.args.rerand_bits < 1025 and not self.args.i_know_its_unsafe:
             print 'You should now use less than 1025b group parameters.'
@@ -477,7 +506,7 @@ class Program(object):
                 progressbar.end()
         try:
             blocks_per_container = int(math.floor(self.args.blocks / 6.0))
-            with pol.safe.create(os.path.expanduser(self.args.safe),
+            with pol.safe.create(os.path.expanduser(self.safe_path),
                                  override=self.args.force,
                                  nworkers=self.args.workers,
                                  gp_bits=self.args.rerand_bits,
@@ -493,7 +522,7 @@ class Program(object):
                 print '  trashing freespace ...'
                 safe.trash_freespace()
         except pol.safe.SafeAlreadyExistsError:
-            print '%s exists.  Use -f to override.' % self.args.safe
+            print '%s exists.  Use -f to override.' % self.safe_path
             return -10
     
     def cmd_touch(self):
@@ -910,7 +939,7 @@ class Program(object):
             import readline
         # TODO a more stateful shell would be nice: then we only have to
         #       ask for the password and rerandomize once.
-        if not os.path.exists(os.path.expanduser(self.args.safe)):
+        if not os.path.exists(self.safe_path):
             print "No safe found.  Type `init' to create a new safe."
         while True:
             try:
@@ -971,7 +1000,7 @@ class Program(object):
         sys.stderr.write("  moved entries into container: %s\n" % (
                 pol.humanize.join([entry[0] for entry in entries])))
     def _open_safe(self):
-        return pol.safe.open(os.path.expanduser(self.args.safe),
+        return pol.safe.open(os.path.expanduser(self.safe_path),
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
                            progress=Program._RerandProgress())
@@ -979,15 +1008,15 @@ class Program(object):
         try:
             return self.args.func()
         except pol.safe.SafeNotFoundError:
-            sys.stderr.write("%s: no such file.\n" % self.args.safe)
+            sys.stderr.write("%s: no such file.\n" % self.safe_path)
             sys.stderr.write("To create a new safe, run `pol init'.\n")
             return -5
         except pol.safe.SafeLocked:
-            sys.stderr.write("%s: locked.\n" % self.args.safe)
+            sys.stderr.write("%s: locked.\n" % self.safe_path)
             # TODO add a `pol break-lock'
             return -6
         except pol.safe.WrongMagicError:
-            sys.stderr.write("%s: not a pol safe.\n" % self.args.safe)
+            sys.stderr.write("%s: not a pol safe.\n" % self.safe_path)
             return -13
         except KeyboardInterrupt:
             sys.stderr.write("\n^C\n")

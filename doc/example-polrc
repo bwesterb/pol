@@ -1,0 +1,8 @@
+# The default location of .polrc is in the user home.  That is: ~/.polrc.
+# It is formatted using YAML.  See http://www.yaml.org
+
+# Default safe.  By default this is $HOME/.pol
+safe: /home/user/.other-safe
+
+
+# vim: ft=yaml

@@ -404,6 +404,8 @@ class Program(object):
         with open(path) as f:
             try:
                 self.config = yaml.load(f)
+                if not self.config:
+                    self.config = {}
             except yaml.YAMLError as e:
                 sys.stderr.write("%s: error in configuration file:\n%s\n" % (
                                 path, e))

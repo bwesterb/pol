@@ -6,9 +6,11 @@ import pol.main
 class TestMain(unittest.TestCase):
     def setUp(self):
         self.safe = tempfile.NamedTemporaryFile()
+        self.config = tempfile.NamedTemporaryFile()
 
     def pol(self, *args):
-        ret = pol.main.entrypoint(['-s', self.safe.name] + list(args))
+        ret = pol.main.entrypoint(['-s', self.safe.name,
+                                   '-C', self.config.name] + list(args))
         return 0 if ret is None else ret
     def test_basic(self):
         # TODO we should check output

@@ -12,6 +12,7 @@ install_requires = [
     'yappi >=0.62',          #      ibidem
     'python-mcrypt >=1.1',   #      ibidem
     'lockfile >=0.8',        #      ibidem
+    'PyYAML >=3',            #      ibidem
     'zxcvbn >=1.0',
     'seccure >=0.1.2',
     'demandimport >=0.2',

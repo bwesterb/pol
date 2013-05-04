@@ -56,7 +56,7 @@ For clipboard support, install gtk2:
 
 #### On Mac with MacPorts
 
-    $ port install gmp mcrypt py-pip
+    $ port install gmp mcrypt py-pip py27-mcrypt
     $ pip install pol
 
 ### Creating a safe

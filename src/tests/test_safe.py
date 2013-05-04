@@ -79,6 +79,33 @@ class TestElgamalSafe(unittest.TestCase):
         self.assertTrue(c_m.can_add)
         self.assertTrue(c_l.can_add)
         self.assertTrue(c_a.can_add)
+    def test_additional_keys(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=30,
+                                additional_keys=['b','a'])
+        cs_m = list(safe.open_containers('m'))
+        cs_l = list(safe.open_containers('l'))
+        cs_a = list(safe.open_containers('a'))
+        self.assertEqual(len(cs_m), 0)
+        self.assertEqual(len(cs_l), 0)
+        self.assertEqual(len(cs_a), 0)
+        cs_m = list(safe.open_containers('m', additional_keys=['a', 'b']))
+        cs_l = list(safe.open_containers('l', additional_keys=['a', 'b']))
+        cs_a = list(safe.open_containers('a', additional_keys=['a', 'b']))
+        self.assertEqual(len(cs_m), 1)
+        self.assertEqual(len(cs_l), 1)
+        self.assertEqual(len(cs_a), 1)
+        c_m = cs_m[0]
+        c_l = cs_l[0]
+        c_a = cs_a[0]
+        self.assertTrue(c_m.can_add)
+        self.assertTrue(c_l.can_add)
+        self.assertTrue(c_a.can_add)
+        self.assertEqual(len(list(safe.open_containers('m',
+                        additional_keys=['a', 'b', 'c']))), 0)
+        self.assertEqual(len(list(safe.open_containers('o',
+                        additional_keys=['a', 'b']))), 0)
+
     def test_main_data(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', None, nblocks=70)

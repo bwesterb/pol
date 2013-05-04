@@ -63,6 +63,10 @@ cracktimes = {'seconds':     10,
 #       change-password
 
 class Program(object):
+    def __init__(self):
+        # Contents of keyfiles, if provided
+        self.additional_keys = None
+
     def parse_args(self, argv):
         # Common
         parser = argparse.ArgumentParser(add_help=False)
@@ -108,6 +112,8 @@ class Program(object):
                     help='Required for obviously unsafe actions')
         p_init_a.add_argument('--blocks', '-N', type=int, default=1024,
                     help='Number of blocks in the safe')
+        p_init_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_init.set_defaults(func=self.cmd_init)
 
         # pol list
@@ -121,6 +127,8 @@ class Program(object):
         p_list_a = p_list.add_argument_group('basic options')
         p_list_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to list')
+        p_list_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_list.set_defaults(func=self.cmd_list)
 
         # pol generate
@@ -160,6 +168,8 @@ class Program(object):
         p_generate_a = p_generate.add_argument_group('advanced options')
         p_generate_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add password to')
+        p_generate_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_generate.set_defaults(func=self.cmd_generate)
 
         # pol paste
@@ -173,6 +183,8 @@ class Program(object):
         p_paste_a = p_paste.add_argument_group('advanced options')
         p_paste_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add secret to')
+        p_paste_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_paste.set_defaults(func=self.cmd_paste)
 
         # pol copy
@@ -188,6 +200,8 @@ class Program(object):
         p_copy_a = p_copy.add_argument_group('advanced options')
         p_copy_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to copy secret from')
+        p_copy_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_copy.set_defaults(func=self.cmd_copy)
 
         # pol put
@@ -204,6 +218,8 @@ class Program(object):
         p_put_a = p_put.add_argument_group('advanced options')
         p_put_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to add secret to')
+        p_put_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_put.set_defaults(func=self.cmd_put)
 
         # pol get
@@ -219,6 +235,8 @@ class Program(object):
         p_get_a = p_get.add_argument_group('advanced options')
         p_get_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to get secret from')
+        p_get_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_get.set_defaults(func=self.cmd_get)
 
         # pol remove
@@ -234,6 +252,8 @@ class Program(object):
         p_remove_a = p_remove.add_argument_group('advanced options')
         p_remove_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to remove entry from')
+        p_remove_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_remove.set_defaults(func=self.cmd_remove)
 
         # pol touch
@@ -254,6 +274,8 @@ class Program(object):
         p_raw.add_argument('--passwords', '-p', nargs='+', metavar='PW',
                     help='Also show data of containers opened by '+
                             'these passwords')
+        p_raw.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_raw.set_defaults(func=self.cmd_raw)
 
         # pol import-psafe3
@@ -267,6 +289,9 @@ class Program(object):
                     help='show this help message and exit')
         p_import_psafe3_a = p_import_psafe3.add_argument_group(
                                     'advanced options')
+        p_import_psafe3_a.add_argument('-K', '--keyfiles', nargs='*',
+                            metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_import_psafe3.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to import to')
         p_import_psafe3.add_argument('--psafe3-password', '-P',
@@ -284,7 +309,7 @@ class Program(object):
                                     'basic options')
         p_import_keepass_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
-        p_import_keepass_b.add_argument('-K', '--keepass-keyfile',
+        p_import_keepass_b.add_argument('-k', '--keepass-keyfile',
                             metavar='PATH',
                     help='Keyfile used to open KeePass database')
         p_import_keepass_a = p_import_keepass.add_argument_group(
@@ -294,6 +319,9 @@ class Program(object):
         p_import_keepass_a.add_argument('--keepass-password', '-P',
                     metavar='PASSWORD',
                     help='Password of KeePass db to import')
+        p_import_keepass_a.add_argument('-K', '--keyfiles', nargs='*',
+                        metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_import_keepass.set_defaults(func=self.cmd_import_keepass)
 
         # pol export
@@ -311,6 +339,8 @@ class Program(object):
         p_export_a = p_export.add_argument_group('advanced options')
         p_export_a.add_argument('--password', '-p', metavar='PASSWORD',
                     help='Password of container to export')
+        p_export_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_export.set_defaults(func=self.cmd_export)
 
         # pol shell
@@ -321,6 +351,9 @@ class Program(object):
                                     'basic options')
         p_shell_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
+        p_shell_a = p_shell.add_argument_group('advanced options')
+        p_shell_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
         p_shell.set_defaults(func=self.cmd_shell)
 
         # pol speed
@@ -420,6 +453,12 @@ class Program(object):
                                 else (self.config['safe']
                                         if 'safe' in self.config
                                     else os.path.expanduser('~/.pol')))
+            self.keyfiles = (self.args.keyfiles if
+                                    hasattr(self.args, 'keyfiles') and
+                                            self.args.keyfiles
+                                else (self.config['keyfiles']
+                                        if 'keyfiles' in self.config
+                                    else None))
 
             # Execute command
             ret = self._run_command()
@@ -436,6 +475,7 @@ class Program(object):
         if (os.path.exists(self.safe_path) and not self.args.force):
             print '%s exists.  Use -f to override.' % self.safe_path
             return -10
+        self._ensure_keyfiles_are_loaded()
         if self.args.rerand_bits < 1025 and not self.args.i_know_its_unsafe:
             print 'You should now use less than 1025b group parameters.'
             return -9
@@ -539,6 +579,7 @@ class Program(object):
                     mpw, lpw, apw = mlapw
                     print '  allocating container #%s ...' % (i+1)
                     c = safe.new_container(mpw, lpw, apw,
+                                    additional_keys=self.additional_keys,
                                     nblocks=blocks_per_container)
                 print '  trashing freespace ...'
                 safe.trash_freespace()
@@ -559,8 +600,7 @@ class Program(object):
             if not self.args.passwords:
                 return
             for password in self.args.passwords:
-                for container in safe.open_containers(password,
-                        on_move_append_entries=self._on_move_append_entries):
+                for container in self._open_containers(safe, password):
                     print
                     print 'Container %s' % container.id
                     if container.main_data:
@@ -574,10 +614,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             entries = []
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -617,10 +656,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             entries = []
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -662,10 +700,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             entries = []
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -724,10 +761,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             stored = False
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -779,10 +815,9 @@ class Program(object):
         found_one = False
         stored = False
         with self._open_safe() as safe:
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -826,10 +861,9 @@ class Program(object):
             regex = None
         with self._open_safe() as safe:
             found_one = False
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (list-)password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter (list-)password: ')):
                 if not found_one:
                     found_one = True
                 else:
@@ -871,10 +905,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             the_container = None
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                        else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:
@@ -918,10 +951,9 @@ class Program(object):
         with self._open_safe() as safe:
             found_one = False
             the_container = None
-            for container in safe.open_containers(
+            for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: '),
-                        on_move_append_entries=self._on_move_append_entries):
+                            else getpass.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:
@@ -998,10 +1030,9 @@ class Program(object):
                 close_f = True
             writer = csv.writer(f)
             with self._open_safe() as safe:
-                for container in safe.open_containers(
+                for container in self._open_containers(safe,
                         self.args.password if self.args.password
-                                else getpass.getpass('Enter password: '),
-                            on_move_append_entries=self._on_move_append_entries):
+                                else getpass.getpass('Enter password: ')):
                     found_one = True
                     for entry in container.list():
                         rows_written += 1
@@ -1046,6 +1077,23 @@ class Program(object):
             self._handle_uncaught_exception()
             return -12
         # TODO gracefully handle SafeFullError
+
+    def _ensure_keyfiles_are_loaded(self):
+        if self.additional_keys or not self.keyfiles:
+            return
+        self.additional_keys = []
+        l.debug('Loading keyfiles ...')
+        for keyfile in self.keyfiles:
+            l.debug('  %s ...', keyfile)
+            with open(keyfile) as f:
+                self.additional_keys.append(f.read())
+
+    def _open_containers(self, safe, password):
+        self._ensure_keyfiles_are_loaded()
+        return safe.open_containers(password,
+                        on_move_append_entries=self._on_move_append_entries,
+                        additional_keys=self.additional_keys)
+
     def _handle_uncaught_exception(self):
         sys.stderr.write("\n")
         sys.stderr.write("An unhandled exception occured:\n")

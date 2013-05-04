@@ -173,7 +173,7 @@ class Safe(object):
         """ Create a new container. """
         raise NotImplementedError
 
-    def open_containers(self, password):
+    def open_containers(self, password, additional_keys=[]):
         """ Opens a container. """
         raise NotImplementedError
 
@@ -649,7 +649,7 @@ class ElGamalSafe(Safe):
         safe.mark_free(xrange(n_blocks))
         return safe
 
-    def open_containers(self, password, autosave=True,
+    def open_containers(self, password, additional_keys=None, autosave=True,
                             move_append_entries=True,
                             on_move_append_entries=None):
         """ Opens a container.
@@ -657,7 +657,8 @@ class ElGamalSafe(Safe):
             If there are entries in the append-slice, `on_move_append_entries'
             will be called with the entries as only argument. """
         l.debug('open_containers: Stretching key')
-        access_key = self.ks(password)
+        access_key = self.ks(self._composite_password(
+                                    password, additional_keys))
         l.debug('open_containers: Searching for access slice ...')
         for sl in self._find_slices(access_key):
             access_data = access_tuple(*pol.serialization.string_to_son(
@@ -735,7 +736,7 @@ class ElGamalSafe(Safe):
         return container
 
     def new_container(self, password, list_password=None, append_password=None,
-                                nblocks=170, randfunc=None):
+                            additional_keys=None, nblocks=170, randfunc=None):
         """ Create a new container. """
         # TODO support access blocks of more than one block in size.
         # TODO check append_slice_size makes sense
@@ -771,11 +772,14 @@ class ElGamalSafe(Safe):
         list_key = self.kd([full_key, KD_LIST])
         append_key = self.kd([list_key, KD_APPEND])
         # Derive keys from passwords
-        as_full_key = self.ks(password)
+        as_full_key = self.ks(self._composite_password(
+                                password, additional_keys))
         if append_password:
-            as_append_key = self.ks(append_password)
+            as_append_key = self.ks(self._composite_password(
+                                append_password, additional_keys))
         if list_password:
-            as_list_key = self.ks(list_password)
+            as_list_key = self.ks(self._composite_password(
+                                list_password, additional_keys))
         # Create access slices
         l.debug('new_container: creating access slices')
         as_full.store(as_full_key, pol.serialization.son_to_string(
@@ -1049,6 +1053,11 @@ class ElGamalSafe(Safe):
         ret[0] = pol.serialization.number_to_string(c1)
         ret[1] = pol.serialization.number_to_string(c2)
         return ret
+    def _composite_password(self, password, additional_keys):
+        additional_keys = list(sorted(additional_keys
+                                        if additional_keys else []))
+        return (self.kd([password] + additional_keys)
+                            if additional_keys else password)
 
 def _eg_rerandomize_block_initializer(args, kwargs):
     Crypto.Random.atfork()

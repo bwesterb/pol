@@ -34,6 +34,7 @@ import pol.importers.keepass
 import pol.importers.psafe3
 import pol.speed
 
+import msgpack
 import yappi
 import yaml
 
@@ -353,6 +354,19 @@ class Program(object):
             l.debug('No configuration file found.')
             self.config = {}
             return
+        cached_path = path + '.cached'
+        if (os.path.exists(cached_path)
+                    and os.stat(cached_path).st_mtime
+                            > os.stat(path).st_mtime):
+            l.debug('Loading cached configuration file %s ...', cached_path)
+            with open(cached_path) as f:
+                try:
+                    self.config = msgpack.load(f)
+                    l.debug('    ... done')
+                    return
+                except Exception as e:
+                    l.warning('Exception loading cached configuration file.  '+
+                                'Loading original.  (%s)', e)
         l.debug('Loading configuration file %s ...', path)
         with open(path) as f:
             try:
@@ -361,7 +375,9 @@ class Program(object):
                 sys.stderr.write("%s: error in configuration file:\n%s\n" % (
                                 path, e))
                 return -18
-        l.debug('    ... done')
+        l.debug('Writing cached configuration file %s ...', cached_path)
+        with open(cached_path, 'w') as f:
+            msgpack.dump(self.config, f)
 
     def main(self, argv):
         try:

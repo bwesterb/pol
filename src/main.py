@@ -21,6 +21,7 @@ import math
 import sys
 import csv
 import re
+import os
 
 import pol.safe
 import pol.passgen
@@ -340,6 +341,12 @@ class Program(object):
 
     def main(self, argv):
         try:
+            profiling = False
+
+            if 'POL_PROFILE' in os.environ:
+                profiling = True
+                yappi.start()
+
             if not argv:
                 argv = ['shell']
 
@@ -359,12 +366,14 @@ class Program(object):
             logging.basicConfig(level=level, **extra_logging_config)
 
             # Profile?
-            if self.args.profile:
+            if self.args.profile and not profiling:
+                profiling = True
                 yappi.start()
 
             # Execute command
             ret = self._run_command()
-            if self.args.profile:
+
+            if profiling:
                 yappi.stop()
                 yappi.print_stats()
 

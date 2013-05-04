@@ -40,9 +40,9 @@ First, we install pol.
                         python-pip
     $ pip install pol
 
-For clipboard support, install tkinter:
+For clipboard support, install gtk2:
 
-    $ apt-get install python-tk
+    $ apt-get install python-gtk2
 
 #### On Ubuntu
 
@@ -50,9 +50,9 @@ For clipboard support, install tkinter:
                         python-pip
     $ pip install pol
 
-For clipboard support, install tkinter:
+For clipboard support, install gtk2:
 
-    $ apt-get install python-tk
+    $ apt-get install python-gtk2
 
 #### On Mac with MacPorts
 

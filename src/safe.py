@@ -708,7 +708,7 @@ class ElGamalSafe(Safe):
                             cipherstream.decrypt(main_data.secrets)))
         # Read the append-data, if it exists
         moved_entries = False
-        if append_index:
+        if append_index is not None:
             append_slice = self._load_slice(append_key, append_index)
             append_data = append_tuple(*pol.serialization.string_to_son(
                                     append_slice.value))

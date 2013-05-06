@@ -329,9 +329,9 @@ class Program(object):
         p_export = subparsers.add_parser('export',
                         add_help=False,
                     help='Exports entries to CSV')
-        p_export.add_argument('--output', '-o',
+        p_export.add_argument('path',
                     help='Path to CSV file to write to.  Defaults to stdout.',
-                    default='-')
+                    default='-', nargs='?')
         p_export_b = p_export.add_argument_group('basic options')
         p_export_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
@@ -1093,14 +1093,14 @@ class Program(object):
         rows_written = 0
         found_one = False
         try:
-            if self.args.output == '-':
+            if self.args.path == '-':
                 f = sys.stdout
             else:
-                if os.path.exists(self.args.output) and not self.args.force:
+                if os.path.exists(self.args.path) and not self.args.force:
                     sys.stderr.write("%s exists. Use -f to override.\n"
-                                            % self.args.output)
+                                            % self.args.path)
                     return -11
-                f = open(self.args.output, 'w')
+                f = open(self.args.path, 'w')
                 close_f = True
             writer = csv.writer(f)
             with self._open_safe() as safe:

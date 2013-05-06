@@ -18,3 +18,5 @@
 -16:  Invalid regular expression
 -17:  Specified configuration file not found
 -18:  Problem with configuration file
+-19:  Specified file not found
+-20:  Specified file is malformed

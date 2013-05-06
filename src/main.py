@@ -344,6 +344,23 @@ class Program(object):
                     help='Compose passwords with the contents of these files')
         p_export.set_defaults(func=self.cmd_export)
 
+        # pol import
+        p_import = subparsers.add_parser('import',
+                        add_help=False,
+                    help='Imports entries from CSV')
+        p_import.add_argument('path',
+                    help='Path to CSV file to read.  Defaults to stdin.',
+                    default='-', nargs='?')
+        p_import_b = p_import.add_argument_group('basic options')
+        p_import_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_import_a = p_import.add_argument_group('advanced options')
+        p_import_a.add_argument('--password', '-p', metavar='PASSWORD',
+                    help='Password of container to import to')
+        p_import_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
+        p_import.set_defaults(func=self.cmd_import)
+
         # pol shell
         p_shell = subparsers.add_parser('shell',
                         add_help=False,
@@ -893,6 +910,56 @@ class Program(object):
                     print '  (no list access)'
             if not found_one:
                 print ' No containers found'
+
+    def cmd_import(self):
+        entries = []
+        close_f = False
+        # First, read the CSV
+        if self.args.path == '-':
+            f = sys.stdin
+        else:
+            if not os.path.exists(self.args.path):
+                sys.stderr.write("%s: no such file\n" % self.args.path)
+                return -19
+            f = open(self.args.path)
+            close_f = True
+        try:
+            reader = csv.reader(f)
+            for row in reader:
+                if len(row) != 3:
+                    sys.stderr.write("%s: row should have exactly 3 entries\n"
+                                        % self.args.path)
+                    return -20
+                entries.append(row)
+        finally:
+            if close_f:
+                f.close()
+
+        # Then, open the pol safe
+        with self._open_safe() as safe:
+            found_one = False
+            the_container = None
+            for container in self._open_containers(safe,
+                    self.args.password if self.args.password
+                        else getpass.getpass('Enter (append-)password: ')):
+                if not found_one:
+                    found_one = True
+                if container.can_add:
+                    the_container = container
+                    break
+            if not found_one:
+                print 'The password did not open any container.'
+                return -1
+            if not the_container:
+                print ('No append access to the containers opened '+
+                            'by this password')
+                return -2
+
+            # Import the entries
+            for entry in entries:
+                the_container.add(*entry)
+            the_container.save()
+            print "%s entries imported" % len(entries)
 
     def cmd_import_keepass(self):
         # First load keepass db

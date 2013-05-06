@@ -68,6 +68,7 @@ class Program(object):
         self.additional_keys = None
 
     def parse_args(self, argv):
+        """ Parse command line arguments.  Sets self.args. """
         # Common
         parser = argparse.ArgumentParser(add_help=False)
         g_basic = parser.add_argument_group('basic options')
@@ -378,6 +379,7 @@ class Program(object):
         self.args = parser.parse_args(argv)
 
     def load_configuration(self):
+        """ Loads the configuration file, if present, and sets self.config """
         path = (self.args.config_file if self.args.config_file
                     else os.path.expanduser('~/.polrc'))
         if not os.path.exists(path):
@@ -415,6 +417,7 @@ class Program(object):
             msgpack.dump(self.config, f)
 
     def main(self, argv):
+        """ Main entry point. """
         try:
             profiling = False
 
@@ -760,6 +763,8 @@ class Program(object):
             return -3
         return self._store(pw)
     def _store(self, pw):
+        """ Common code of `pol put', `pol generate' and `pol paste' -
+            stores `pw' to an entry self.args.key. """
         with self._open_safe() as safe:
             found_one = False
             stored = False
@@ -1051,6 +1056,8 @@ class Program(object):
         pass
 
     def _on_move_append_entries(self, entries):
+        """ Called when entries entered by an append-only-password are moved
+            into the container. """
         sys.stderr.write("  moved entries into container: %s\n" % (
                 pol.humanize.join([entry[0] for entry in entries])))
     def _open_safe(self):
@@ -1081,6 +1088,8 @@ class Program(object):
         # TODO gracefully handle SafeFullError
 
     def _ensure_keyfiles_are_loaded(self):
+        """ Ensures self.additional_keys is set to the contents of the
+            desired keyfiles. """
         if self.additional_keys or not self.keyfiles:
             return
         self.additional_keys = []

@@ -68,7 +68,7 @@ def wait_for_keypress():
             ret = 0
     return ret
 
-def zxcvbn_getpass(prompt, prefix=''):
+def zxcvbn_getpass(prompt, prefix='', allow_empty=True):
     """ Similar to getpass.getpass, but shows password strength while typing """
     pw = None
     current = ''
@@ -94,9 +94,17 @@ def zxcvbn_getpass(prompt, prefix=''):
             interacted = True
             if c == '\r' or c == '\n':
                 if not current and not pw:
-                    sys.stderr.write('\033[K\n')
+                    if allow_empty:
+                        sys.stderr.write('\033[K\n')
+                        sys.stderr.flush()
+                        return None
+                    sys.stderr.write('\033[1G\033[K')
+                    new_prompt = prefix+'No password given.  Retry: '
+                    sys.stderr.write(new_prompt)
+                    prompt_offset = len(new_prompt)
                     sys.stderr.flush()
-                    return None
+                    interacted = False
+                    continue
                 if pw:
                     if pw != current:
                         sys.stderr.write('\033[1G\033[K')
@@ -106,6 +114,7 @@ def zxcvbn_getpass(prompt, prefix=''):
                         sys.stderr.flush()
                         pw = None
                         current = ''
+                        interacted = False
                         continue
                     sys.stderr.write('\033[K\n')
                     sys.stderr.flush()

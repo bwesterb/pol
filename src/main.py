@@ -518,14 +518,14 @@ class Program(object):
             if interactive:
                 if first:
                     masterpw = pol.terminal.zxcvbn_getpass(
-                            'Enter master-password: ', '    ')
+                            'Enter master-password: ', '    ', False)
                 else:
                     masterpw = pol.terminal.zxcvbn_getpass(
                             'Enter master-password [stop]: ', '    ')
             else:
                 masterpw = cmdline_pws.pop() if cmdline_pws else ''
-            if not first and not masterpw:
-                    break
+            if not masterpw:
+                break
             if interactive and first:
                 print
                 print "  A container can have a list-password.  With this password you can"

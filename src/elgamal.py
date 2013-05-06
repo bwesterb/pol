@@ -10,7 +10,10 @@ import collections
 import multiprocessing
 
 # pycrypto
-import Crypto.Util.number as number
+import demandimport
+with demandimport.disabled():
+    import Crypto.Util.number as number
+
 import Crypto.Random
 
 # gmpy

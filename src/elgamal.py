@@ -11,8 +11,7 @@ import multiprocessing
 
 # pycrypto
 import demandimport
-with demandimport.disabled():
-    import Crypto.Util.number as number
+import Crypto.Util.number as number
 
 import Crypto.Random
 

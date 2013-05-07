@@ -6,6 +6,7 @@
 
 # demandimport delays the import of modules until they are actually used.
 import demandimport
+demandimport.ignore('Crypto.PublicKey._fastmath')
 demandimport.enable()
 
 import traceback

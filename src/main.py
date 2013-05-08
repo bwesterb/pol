@@ -881,7 +881,7 @@ class Program(object):
     def cmd_list(self):
         if self.args.regex:
             try:
-                regex = re.compile(self.args.regex)
+                regex = re.compile(self.args.regex, re.I)
             except re.error as e:
                 sys.stderr.write("Invalid regex: %s\n" % e.message)
                 return -16
@@ -900,7 +900,7 @@ class Program(object):
                 try:
                     got_entry = False
                     for entry in container.list():
-                        if regex and not regex.match(entry.key):
+                        if regex and not regex.search(entry.key):
                             continue
                         got_entry = True
                         print ' %-20s %s' % (entry.key, repr(entry.note)

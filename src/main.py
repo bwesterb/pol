@@ -5,9 +5,12 @@
     Contains the argument parser and CLI interaction. """
 
 # demandimport delays the import of modules until they are actually used.
+import os
 import demandimport
-demandimport.ignore('Crypto.PublicKey._fastmath')
-demandimport.enable()
+
+if 'POL_NO_DEMANDIMPORT' not in os.environ:
+    demandimport.ignore('Crypto.PublicKey._fastmath')
+    demandimport.enable()
 
 import traceback
 import readline

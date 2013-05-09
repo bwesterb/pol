@@ -6,9 +6,15 @@
 
 # demandimport delays the import of modules until they are actually used.
 import os
+import sys
 import demandimport
 
-if 'POL_NO_DEMANDIMPORT' not in os.environ:
+# FIXME the pyinstaller module loader breaks when running multiple processes
+#       and demandimport is enabled.  Thus, when we are frozen by pyinstaller,
+#       we disable demandimport.
+if hasattr(sys, 'frozen'):
+    import multiprocessing
+elif 'POL_NO_DEMANDIMPORT' not in os.environ:
     demandimport.ignore('Crypto.PublicKey._fastmath')
     demandimport.enable()
 
@@ -22,13 +28,13 @@ import pprint
 import shlex
 import time
 import math
-import sys
 import csv
 import re
 import os
 
 import pol.safe
 import pol.passgen
+import pol.version
 import pol.terminal
 import pol.humanize
 import pol.clipboard
@@ -84,6 +90,9 @@ class Program(object):
         g_basic.add_argument('--verbose', '-v', action='count',
                             dest='verbosity',
                     help='Add these to make pol chatty')
+        g_basic.add_argument('--version', '-V', action=Program._VersionAction,
+                            nargs=0,
+                    help='Print version of pol and quit')
         g_advanced = parser.add_argument_group('advanced options')
         g_advanced.add_argument('--workers', '-w', type=int, metavar='N',
                     help='Number of workers processes (/threads)')
@@ -1205,6 +1214,11 @@ class Program(object):
             self.progressbar(v)
             if v == 1.0:
                 self.progressbar.end()
+
+    class _VersionAction(argparse.Action):
+        def __call__(self, parser, namespace, values, option_stirng):
+            print pol.version.get_version()
+            sys.exit()
 
 
 def entrypoint(argv=None):

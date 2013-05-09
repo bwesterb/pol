@@ -1,8 +1,11 @@
 *.pyo
 *.pyc
 *.swp
+.DS_Store
 /*.egg-info
 /build
 /dist
-MANIFEST
-RELEASE-VERSION
+/MANIFEST
+/src/version/RELEASE-VERSION
+/pyinstaller/build
+/pyinstaller/dist

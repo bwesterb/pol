@@ -2,7 +2,7 @@
 
 import sys
 from setuptools import setup
-from get_git_version import get_git_version
+from src.version import get_version
 
 install_requires = [
     'pycrypto >=2.6',        # TODO do we need this version
@@ -23,7 +23,7 @@ if sys.version_info < (2, 7):
 
 setup(
     name='pol',
-    version=get_git_version(),
+    version=get_version(),
     description='pol, a modern password manager',
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',

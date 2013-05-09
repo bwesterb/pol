@@ -1,2 +1,1 @@
-include RELEASE-VERSION
-include get_git_version.py
+include src/version/RELEASE-VERSION

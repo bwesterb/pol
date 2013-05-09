@@ -48,8 +48,16 @@ First, we install pol.
 
 #### On Mac with MacPorts
 
+Install [MacPorts](http://www.macports.org).  Then run
+
     $ sudo port install gmp mcrypt py-pip py27-mcrypt py27-crypto
     $ sudo pip-2.7 install pol
+
+If you get `pol: command not found` when you try to run `pol`,
+add `/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin`
+to your `PATH`.  For instance, like this:
+
+    $ echo 'export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH' >> ~/.profile
 
 ### Creating a safe
 Then, create a new safe with `pol init`.

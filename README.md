@@ -36,20 +36,20 @@ First, we install pol.
 
 #### On Debian Wheezy
 
-    $ apt-get install libgmp3-dev libmcrypt-dev build-essential python-dev \
-                        python-pip
-    $ pip install pol
+    $ sudo apt-get install libgmp3-dev libmcrypt-dev build-essential \
+                            python-dev \ python-pip
+    $ sudo pip install pol
 
 #### On Ubuntu 13.04
 
-    $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
+    $ sudo apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
                         python-pip libssl-dev
-    $ pip install pol
+    $ sudo pip install pol
 
 #### On Mac with MacPorts
 
-    $ port install gmp mcrypt py-pip py27-mcrypt
-    $ pip-2.7 install pol
+    $ sudo port install gmp mcrypt py-pip py27-mcrypt
+    $ sudo pip-2.7 install pol
 
 ### Creating a safe
 Then, create a new safe with `pol init`.

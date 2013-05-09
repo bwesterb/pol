@@ -48,7 +48,7 @@ First, we install pol.
 
 #### On Mac with MacPorts
 
-    $ sudo port install gmp mcrypt py-pip py27-mcrypt
+    $ sudo port install gmp mcrypt py-pip py27-mcrypt py27-crypto
     $ sudo pip-2.7 install pol
 
 ### Creating a safe

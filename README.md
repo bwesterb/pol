@@ -47,7 +47,7 @@ For clipboard support, install gtk2:
 #### On Ubuntu
 
     $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
-                        python-pip
+                        python-pip libssl-dev
     $ pip install pol
 
 For clipboard support, install gtk2:

@@ -44,15 +44,11 @@ For clipboard support, install gtk2:
 
     $ apt-get install python-gtk2
 
-#### On Ubuntu
+#### On Ubuntu 13.04
 
     $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
                         python-pip libssl-dev
     $ pip install pol
-
-For clipboard support, install gtk2:
-
-    $ apt-get install python-gtk2
 
 #### On Mac with MacPorts
 

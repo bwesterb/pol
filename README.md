@@ -40,10 +40,6 @@ First, we install pol.
                         python-pip
     $ pip install pol
 
-For clipboard support, install gtk2:
-
-    $ apt-get install python-gtk2
-
 #### On Ubuntu 13.04
 
     $ apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \

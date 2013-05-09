@@ -5,6 +5,8 @@ import logging
 import warnings
 import subprocess
 
+import demandimport
+
 l = logging.getLogger(__name__)
 
 # First, if we're on Mac, use pbcopy and pbpaste
@@ -23,11 +25,12 @@ else:
     # Then, try GTK
     got_gtk = False
     try:
-        with warnings.catch_warnings(record=True) as ws:
-            import gtk
-            if not ws or all([w.message.message != 'could not open display'
-                                    for w in ws]):
-                got_gtk = True
+        with demandimport.disabled():
+            with warnings.catch_warnings(record=True) as ws:
+                import gtk
+                if not ws or all([w.message.message != 'could not open display'
+                                        for w in ws]):
+                    got_gtk = True
     except ImportError:
         pass
 
@@ -44,7 +47,8 @@ else:
     else:
         # Finally, try Tkinter
         try:
-            import Tkinter
+            with demandimport.disabled():
+                import Tkinter
             got_tkinter = True
             tk = Tkinter.Tk()
             tk.withdraw()

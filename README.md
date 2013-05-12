@@ -37,7 +37,7 @@ First, we install pol.
 #### On Debian Wheezy
 
     $ sudo apt-get install libgmp3-dev libmcrypt-dev build-essential \
-                            python-dev \ python-pip
+                            python-dev python-pip
     $ sudo pip install pol
 
 #### On Ubuntu 13.04

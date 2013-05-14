@@ -1,8 +1,9 @@
 pol
 ===
 
-**WARNING** pol is in development: it is not finished; it is probably not
-yet secure and updates of the format might break your safe.
+**WARNING** pol is a young project, there might be errors,
+even vulnerabilities --- please help out by testing
+or reviewing its code.
 
 pol /pɵl/ is a password manager with two important features:
 

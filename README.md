@@ -172,6 +172,26 @@ your clipboard, write
      note: 'used the e-mail john@doo.org'
     Copied secret to clipboard.  Press any key to clear ... 
 
+### List passwords
+
+To list the entries in a container, use
+
+    $ pol list
+    Enter (list-)password: 
+    Container @280
+     github               'user: johndoo'
+     router             
+     facebook             'email: john@doo.org'
+     bios.notebook
+     bios.pc
+
+You can filter results as follows
+
+    $ pol list bios
+    Container @280
+     bios.notebook
+     bios.pc
+
 [![Build Status](https://travis-ci.org/bwesterb/pol.png)](
    https://travis-ci.org/bwesterb/pol)
       

@@ -164,23 +164,30 @@ Where
 Then given any such ciphertext (`c1`, `c2`)
 one can consider
 
-   (c1 * g ** s, c2 * (g ** x) ** s)
+    (c1 * g ** s, c2 * (g ** x) ** s)
 
 for a random `s`.  It is easy to check that is an El-Gamal ciphertext
 for the same plaintext.  We just changed the random number from `r`
 to `r+s`.  This is called a rerandomization of the ciphertext.  This
 rerandomization is applied to each block of the safe.
 
+Before we discuss the details of the format of a safe, we
+look at the primitives.
+
 Primitives
 ----------
 
 ### Blockcipher
 
+Given an initialization vector and a key, the blockcipher
+encrypts and decrypts messages by blocks.
+
 The default (and the only supported configuration) is:
 
     {'type': 'aes', 'bits': 256}
 
-This is AES-256 in CTR mode.  See [blockcipher.py](../src/blockcipher.py).
+This is AES-256 in CTR mode.  Its blocksize is 16 bytes.
+See [blockcipher.py](../src/blockcipher.py).
 
 ### Key-stretching
 
@@ -208,6 +215,8 @@ See [ks.py](../src/ks.py).
 
 The key-derivation is basically a hash function from
 the finite tuples of strings to strings of arbitrary length.
+Although the key-derivation generates strings of arbitary length,
+it specifies a natural length.
 
 The default (and the only supported type) is based
 on SHA2 (`sha`).  The default configuration is:
@@ -226,6 +235,7 @@ one can consider the big string
 
 Here `H` stands for SHA-256 and  `s(i)` for the big endian 16 bit encoding of `i`.
 One can trunctate this string to any length.  This is the default key-derivation.
+The natural length of this key-derivation is 32 bytes.
 
 #### Example
 
@@ -290,5 +300,192 @@ See [envelope.py](../src/envelope.py),
 
 The safe
 --------
-T
 
+### Serialization of big integers, block indeces and more
+
+In various places, we need to store big unsigned integers.
+`msgpack` has no support for these.  We serialize a big unsigned integer
+as a bytestring in little endian.  Thus the string `hello` represents
+the number 478560413032.  See [serialization.py](../src/serialization.py).
+
+Also block indices are serialized.  In the main object there is an
+attribute `block-index-size`.  A block index `i` is serialized
+with `block-index-size` bytes in big endian.
+
+The length of a slice is also serialized in big endian.
+In the main object there is an attribute `slice-size` to specify
+how many bytes are used. 
+
+### Slices
+
+A slice consists of a list of blocks.  For instance `[43, 2, 12]`.
+This slice has three blocks.  The first is the block with index 43.
+The second is the block with index 2.  The last block is the block with
+index 12.
+
+Let `Ks` denote the key of the slice.
+
+#### El-Gamal private key
+
+The El-Gamal private key for the *i*th (starting from 0) block
+of the safe is
+
+    KD([ Ks, KD_ELGAMAL, i])
+
+where `KD_ELGAMAL` is the string given in hexadecimal notation by
+
+    d53d376a7db498956d7d7f5e570509d5
+
+and KD is the key-derivation primitive.  Note that `i` is serialized
+as a block index depending on `block-index-size`.
+
+See `_privkey_for_block` in [safe.py](../src/safe.py).
+
+#### Symmetric key
+
+The symmetric key for the slice is
+
+    KD([ Ks, KD_SYMM])
+
+where `KD_SYMM` is the string given in hexadecimal notation by
+
+    4110252b740b03c53b1c11d6373743fb
+
+See `_cipherstream_key` in [safe.py](../src/safe.py).
+
+#### Marker
+
+Recall that a block is a quadruple (`c1`, `c2`, `pk`, `m`),
+where (`c1`, `c2`) is an El-Gamal ciphertext encrypted with
+the public key `pk` and we did not yet explain `m`.
+`m` is called the marker.  If it is a block of the slice with
+key `Ks` and it is the `i`th block of the safe, then `m` is
+
+    KD([ Ks, KD_MARKER, i])
+
+To check whether a key decrypts a block, it is faster
+to check the marker, than it is to do a trail decryption
+or to check `pk`.
+
+See `_marker_for_block` in [safe.py](../src/safe.py).
+
+#### The first blocks
+
+The El-Gamal plaintext of the first block of a slice begins
+
+    KD([ symmetric-key ], blockcipher-blocksize)
+
+Where `symmetric-key` is the symmetric key for the slice
+and `blockcipher-blocksize` is the blocksize of the block-cipher.
+
+It is followed by
+
+    IV
+
+again of length `blockcipher-blocksize`.  The remainder of the plaintext
+of the first block is encrypted using the block-cipher
+with `symmetric-key` as key and `IV` as initialization vector.
+Call this the blockcipher plaintext.
+
+The blockcipher plaintext starts with
+
+    number-of-blocks
+
+which is encoded in the same way as a block index.  See above.  This
+is the number of blocks in the slice.  This is followed by
+`number-of-blocks - 1` indices.  These are the indices of the other
+blocks of the slice.  It is quite possible the blockcipher plaintext
+is too small for all the indices.  In this case the indices that
+did not fit continue in the next block of the slice.  Et cetera.
+
+After that the size of the slice is serialized.  The remainder is
+the contents of the slice, which should be truncated to the specified size.
+
+See `_load_slice_from_first_block` in [safe.py](../src/safe.py).
+
+#### Compression of the data of a slice
+
+The data of a slice starts with a single format byte.
+
+ * If the format byte is 0, then the remainder is a
+   [msgpack](http://msgpack.org) encoded simple object.
+ * If the format byte is 1, then the remainder is a
+   [msgpack](http://msgpack.org) encoded simple object compressed
+   with [zlib](http://zlib.net).
+
+See `string_to_son` in [serialization.py](../src/serialization.py).
+
+### Access slices
+
+The key of an append slice for a password `pwd` is
+
+    KS(pwd)
+
+The data of an access slice is the quadruple
+
+    ( magic, type, key, index )
+
+**magic** is always in hexadecimal
+
+    1a 1a 8a d7
+
+**type** is either
+
+ * 0, then this is an access slice for a master password.
+ * 1, then this is an access slice for a list-only password.
+ * 2, then this is an access slice for an append-only password.
+
+**key** is
+
+ * The full key of the container when this is a master password access slice.
+ * The list key of the container when this is a list-only password access slice.
+ * The append key of the container when this is an append-only password access
+   slice.
+
+**index** is
+
+ * The index of the main slice when this is a master or list-only password
+   access slice.
+ * The index of the append slice when this is the append-only password access
+   slice.
+
+#### Append slices
+
+The key of an append slice is the append key of the container it belongs to.
+The data of an append slice is the triple
+
+    ( magic, pubkey, entries )
+
+**magic** is always in hexadecimal
+
+    2d 50 39 ba
+
+**pubkey** is the public key from the envelope primitive with which the
+entries are sealed.
+
+**entries** is this list of sealed entries.  An entry is a triple
+
+    ( key, note, secret )
+
+that is serialized in the same way as the data of a slice.  See above.
+
+#### Main slices
+
+The key of a main slice is the list key of the container it belongs to.
+The data of a main slice is the quintuple
+
+    ( magic, append_index, entries, iv, secrets )
+
+**magic** is always in hexadecimal
+
+    33 65 3e fc
+
+**append_index** is the index of the first block of the append slice of
+the container.
+
+**entries** is a list of pairs (`key`, `note`).
+
+**iv** is the initialization vector with which `secrets` is encrypted.
+
+**secrets** is the list of secrets, encoded in the same way as the data of
+an access slice, encrypted with the full key and initialization vector `iv`.

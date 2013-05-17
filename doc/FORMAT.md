@@ -90,7 +90,16 @@ Each entry is a triplet: key, note and secret.
 
 Containers are hidden in a large list of blocks.  Typically a safe
 contains 1024 blocks.  Each block belongs to a container or is random junk.
-We cannot distinguish a block that is random junk from a block owned by a container.
+We cannot distinguish a block that is random junk from a block owned
+by a container.
+
+Each block is in fact a quadruple: (`c1`, `c2`, `pk`, `m`).
+The pair (`c1`, `c2`) is an El-Gamal ciphertext
+for the private key corresponding to the public key `pk`.
+This is true, even if the block is junk.  If the block is junk,
+the plaintext and private key are randomly generated and thrown
+away.  `m` is a key related to the private key of the block,
+used to improve performance of finding blocks.  See the details below.
 
 To accommodate for the different levels of access each password gives,
 a container is split into (at most) five slices.
@@ -100,10 +109,67 @@ Then there is a *main slice* that contains the entries.
 Finally, there is an *append slice* that contains the sealed
 passwords added with the *append-only password*.
 
-Each block is in fact a quadruple.  
+Each slice has a *slice key*.  In the case of the *master password access
+slice*, this is the key-stretching primitive applied to the master-password.
+In the case of the master slice, this is a randomly generated key stored
+in the list-password and master-password access slices.
+The El-Gamal private key of a block of a slice is derived deterministically
+from the *slice key* with the key-derivation primitive.
+The El-Gamal plaintext of a block is itself a ciphertext:
+it is encrypted with the blockcipher primitive using another key
+derived from the *slice key*.
+The first few blocks of a slice, contain the indices of the other blocks of
+the slice.
 
-Before we will look at the details of the format of a safe, we will look
-at the details of the primitives.
+Thus, to open a container given a password:
+
+ 1. First derive the access slice key from the password using the
+    key stretching algorithm.
+ 2. Find the access slice by trying to decrypt each block using the
+    appropriate derived key.
+ 3. Decrypt the first and other blocks of the *access slice*.
+ 4. Using the key for the *main slice* or *append slice* stored in the
+    *access slice*, derive the *slice key* and find the main/append slice
+    as before.
+
+The *master slice* contains:
+
+ 1. A private key used to decrypt entries in the *append slice*.
+ 2. A list of (key, note) for each entry.
+ 3. The ciphertext of the list of secrets.
+
+With a *list password* one can decrypt the *master slice*, but you
+need the *master password* to decrypt the ciphertext of the secrets
+in the *master slice*.
+
+The *append slice* contains:
+
+ 1. The public key used to seal entries.
+ 2. A list of sealed entries.
+
+Whenever the safe has been accessed, it is rerandomized.
+We will explain how rerandomization of a block is performed.
+Recall that El-Gamal encryption is defined as
+follows:
+
+    E(m) = (g ** r, m * (g ** x) ** r) mod p
+
+Where
+
+ * `g` is a generator of the finite field **p**
+ * `r` is a random element of the field
+ * `x` is the private key
+ * `g ** x` is the public key
+
+Then given any such ciphertext (`c1`, `c2`)
+one can consider
+
+   (c1 * g ** s, c2 * (g ** x) ** s)
+
+for a random `s`.  It is easy to check that is an El-Gamal ciphertext
+for the same plaintext.  We just changed the random number from `r`
+to `r+s`.  This is called a rerandomization of the ciphertext.  This
+rerandomization is applied to each block of the safe.
 
 Primitives
 ----------

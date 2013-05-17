@@ -369,6 +369,21 @@ or to check `pk`.
 
 See `_marker_for_block` in [safe.py](../src/safe.py).
 
+#### The El-Gamal group parameters
+
+In the main object the top-level attribute `group-parameters`
+is a pair (`p`, `g`), that specifies the finite field of
+order `p` and generator `g` that is used for the El-Gamal
+cryptography.
+
+#### El-Gamal plaintext
+
+The plaintext of a block is a number.  It is interpreted
+as a string by using the serialization for big integers,
+as defined above, and truncating to `bytes-per-block` bytes.
+`bytes-per-block` is a top-level attribute of the main
+object that specifies how many bytes are stored in each block.
+
 #### The first blocks
 
 The El-Gamal plaintext of the first block of a slice begins

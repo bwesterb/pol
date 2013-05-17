@@ -77,7 +77,33 @@ top-level `block-cipher` attribute.  The `block-cipher` is a so-called
 The format of the safe itself, responsible for the deniable encrpytion,
 is also configurable.   By default it is based on El-Gamal rerandomization.
 
-Before we will look at the details of the safe, we will look at the primitives.
+First we will give an overview of the format.  Then we will go into the
+details.
+
+Overview
+--------
+
+A pol safe can have zero or more containers.
+Each container has a master password.  It can have a list-password and
+an append-password.  A containers contains entries.
+Each entry is a triplet: key, note and secret.
+
+Containers are hidden in a large list of blocks.  Typically a safe
+contains 1024 blocks.  Each block belongs to a container or is random junk.
+We cannot distinguish a block that is random junk from a block owned by a container.
+
+To accommodate for the different levels of access each password gives,
+a container is split into (at most) five slices.
+Every block that belongs to a container, belongs to one of the five slices.
+There are three small *access slices*.  One for each password.
+Then there is a *main slice* that contains the entries.
+Finally, there is an *append slice* that contains the sealed
+passwords added with the *append-only password*.
+
+Each block is in fact a quadruple.  
+
+Before we will look at the details of the format of a safe, we will look
+at the details of the primitives.
 
 Primitives
 ----------
@@ -198,5 +224,5 @@ See [envelope.py](../src/envelope.py),
 
 The safe
 --------
-
+T
 

@@ -74,7 +74,7 @@ top-level `block-cipher` attribute.  The `block-cipher` is a so-called
   4. `envelope`.  Used to seal messages with public/private key
      cryptography.  The default is based on Elliptic Curve IES on secp160r1.
 
-The format of the safe itself, responsible for the deniable encrpytion,
+The format of the safe itself, responsible for the deniable encryption,
 is also configurable.   By default it is based on El-Gamal rerandomization.
 
 First we will give an overview of the format.  Then we will go into the

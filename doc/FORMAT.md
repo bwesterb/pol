@@ -301,7 +301,7 @@ See [envelope.py](../src/envelope.py),
 The safe
 --------
 
-### Serialization of big integers, block indeces and more
+### Serialization of big integers, block indices and more
 
 In various places, we need to store big unsigned integers.
 `msgpack` has no support for these.  We serialize a big unsigned integer

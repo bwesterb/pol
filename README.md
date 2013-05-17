@@ -134,7 +134,8 @@ the key `facebook`.
     Enter (append-)password: 
     Copied password to clipboard.  Press any key to clear ...
 
-You might want to add a note.  This note is shown when you retrieve the password.
+You might want to add a note.  This note is shown when you retrieve
+the password.
 
     $ pol generate facebook "e-mail: john@doo.org"
     Enter (append-)password: 

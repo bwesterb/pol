@@ -308,12 +308,12 @@ In various places, we need to store big unsigned integers.
 as a bytestring in little endian.  Thus the string `hello` represents
 the number 478560413032.  See [serialization.py](../src/serialization.py).
 
-Also block indices are serialized.  In the main object there is an
+Also block indices are serialized.  In the plaintext object there is an
 attribute `block-index-size`.  A block index `i` is serialized
 with `block-index-size` bytes in big endian.
 
 The length of a slice is also serialized in big endian.
-In the main object there is an attribute `slice-size` to specify
+In the plaintext object there is an attribute `slice-size` to specify
 how many bytes are used. 
 
 ### Slices
@@ -371,7 +371,7 @@ See `_marker_for_block` in [safe.py](../src/safe.py).
 
 #### The El-Gamal group parameters
 
-In the main object the top-level attribute `group-parameters`
+In the plaintext object the top-level attribute `group-parameters`
 is a pair (`p`, `g`), that specifies the finite field of
 order `p` and generator `g` that is used for the El-Gamal
 cryptography.

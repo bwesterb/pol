@@ -103,6 +103,13 @@ The default configuration is:
  * **Nexp** is the 2-log of the value *N* passed to scrypt.
  * **salt** is the salt passed to scrypt.
 
+#### Example
+
+The password `waasdasdada` stretched with the default configuration
+and salt `waasdasdaa`, gives the following key in hexadecimal notation:
+
+    69e9b3dafbc7cbe8d903fb1e6e1633da6c45fcd3f6edf66d34532a2883a7abd9390bbc834020a0539d8304570ee7b9eb64ab00ecad1bbd89e1a93c2c38646581
+
 See [ks.py](../src/ks.py).
 
 ### Key-derivation
@@ -128,6 +135,13 @@ one can consider the big string
 Here `H` stands for SHA-256 and  `s(i)` for the big endian 16 bit encoding of `i`.
 One can trunctate this string to any length.  This is the default key-derivation.
 
+#### Example
+
+The 128 byte key derivation of `['a', 'b', 'c']` with salt `c` is in
+hexadecimal notation
+
+    b87a32912e780ab8e22555d132fec8c01b2867128ebb4e56dcac029e71ac902f9e6c49cc332427586fef3cd34330d2724494c09044f475b7c47c24774b996059a8fe87e36dde9c60b1e3838d5a891d023f58b73667672d3b796224e6b7c617bb6b20a9c08b49f40f9b37f5f34be841e957e415638b6cc03cb4c52906044e65e5
+
 See [kd.py](../src/kd.py).
 
 ### Envelope
@@ -152,8 +166,8 @@ A private key is randomly generated.  Its length depends on the
 `keysize` of the curve.  A public key is derived using the same
 method as the commandline util
 [seccure-key](http://point-at-infinity.org/seccure/) uses.
-The public and private key are represented in the same
-compact readable format as is used in seccure.
+The public and private key are represented in the binary
+format as is used in seccure.
 
 #### Sealing a message
 
@@ -165,6 +179,24 @@ A message is sealed compatible with the commandline util
 A sealed message is decrypted compatible with commandline util
 [seccure-decrypt](http://point-at-infinity.org/seccure/).
 
+#### Examples
+
+An example keypair, in hexadecimal notation, is
+
+    004da4d9fc62d0e5f27cc2aac41272e2e94ef04f9c 5ff96fc11a09721d71a844ec2c0ea160ce0aca7ce0
+
+The following
+
+    00143617e9c11a7f6b58eca06e2c68b4d098ea4f5bf8fa85aab33721f06a0ed4d08bfe7d8ad22bf2ce7507904b3245121df1d88fc691093c77991b3998
+
+is the sealed message `'This is a very secret message\n'` for
+the private key `my private key`.
+
 See [envelope.py](../src/envelope.py),
-[https://github.com/bwesterb/py-seccure](py-seccure) and
-[http://point-at-infinity.org/seccure/](seccure).
+[py-seccure](https://github.com/bwesterb/py-seccure) and
+[seccure](http://point-at-infinity.org/seccure/).
+
+The safe
+--------
+
+

@@ -442,29 +442,29 @@ The data of an access slice is the quadruple
 
     ( magic, type, key, index )
 
-**magic** is always in hexadecimal
+ * **magic** is always in hexadecimal
 
-    1a 1a 8a d7
+        1a 1a 8a d7
 
-**type** is either
+ * **type** is either
 
- * 0, then this is an access slice for a master password.
- * 1, then this is an access slice for a list-only password.
- * 2, then this is an access slice for an append-only password.
+    * 0, then this is an access slice for a master password.
+    * 1, then this is an access slice for a list-only password.
+    * 2, then this is an access slice for an append-only password.
 
-**key** is
+ * **key** is
+    
+    * The full key of the container when this is a master password access slice.
+    * The list key of the container when this is a list-only password access slice.
+    * The append key of the container when this is an append-only password access
+      slice.
 
- * The full key of the container when this is a master password access slice.
- * The list key of the container when this is a list-only password access slice.
- * The append key of the container when this is an append-only password access
-   slice.
+ * **index** is
 
-**index** is
-
- * The index of the main slice when this is a master or list-only password
-   access slice.
- * The index of the append slice when this is the append-only password access
-   slice.
+    * The index of the main slice when this is a master or list-only password
+      access slice.
+    * The index of the append slice when this is the append-only password access
+      slice.
 
 #### Append slices
 
@@ -473,16 +473,16 @@ The data of an append slice is the triple
 
     ( magic, pubkey, entries )
 
-**magic** is always in hexadecimal
+ * **magic** is always in hexadecimal
 
-    2d 50 39 ba
+        2d 50 39 ba
 
-**pubkey** is the public key from the envelope primitive with which the
-entries are sealed.
+ * **pubkey** is the public key from the envelope primitive with which the
+   entries are sealed.
 
-**entries** is this list of sealed entries.  An entry is a triple
+ * **entries** is this list of sealed entries.  An entry is a triple
 
-    ( key, note, secret )
+        ( key, note, secret )
 
 that is serialized in the same way as the data of a slice.  See above.
 
@@ -493,16 +493,16 @@ The data of a main slice is the quintuple
 
     ( magic, append_index, entries, iv, secrets )
 
-**magic** is always in hexadecimal
-
-    33 65 3e fc
-
-**append_index** is the index of the first block of the append slice of
-the container.
-
-**entries** is a list of pairs (`key`, `note`).
-
-**iv** is the initialization vector with which `secrets` is encrypted.
-
-**secrets** is the list of secrets, encoded in the same way as the data of
-an access slice, encrypted with the full key and initialization vector `iv`.
+* **magic** is always in hexadecimal
+  
+        33 65 3e fc
+  
+* **append_index** is the index of the first block of the append slice of
+  the container.
+  
+* **entries** is a list of pairs (`key`, `note`).
+  
+* **iv** is the initialization vector with which `secrets` is encrypted.
+  
+* **secrets** is the list of secrets, encoded in the same way as the data of
+  an access slice, encrypted with the full key and initialization vector `iv`.

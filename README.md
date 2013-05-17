@@ -192,6 +192,14 @@ You can filter results as follows
      bios.notebook
      bios.pc
 
+Technical background
+--------------------
+
+For those that like context-free mumbo-jumbo: pol
+uses *El Gamal rerandomization*, *scrypt*, *AES-256 CTR*,
+*ECIES* on *secp160r1*, *SHA-256*, *Fortuna* and *msgpack*.
+For actual details, see [FORMAT.md](doc/FORMAT.md).
+
 [![Build Status](https://travis-ci.org/bwesterb/pol.png)](
    https://travis-ci.org/bwesterb/pol)
       

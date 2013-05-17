@@ -162,6 +162,15 @@ There are several options to change the style of the password:
 
 For all options, see `pol generate -h`.
 
+### Copy password to clipboard
+
+To copy a password stored under the key `digid` from the safe to
+your clipboard, write
+
+    $ pol copy digid
+    Enter password: 
+     note: 'used the e-mail john@doo.org'
+    Copied secret to clipboard.  Press any key to clear ... 
 
 [![Build Status](https://travis-ci.org/bwesterb/pol.png)](
    https://travis-ci.org/bwesterb/pol)

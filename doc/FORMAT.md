@@ -1,6 +1,8 @@
 pol safe format
 ===============
 
+This document describes the (current) format of a pol safe.
+
 Magic bytes
 -----------
 

@@ -384,6 +384,8 @@ as defined above, and truncating to `bytes-per-block` bytes.
 `bytes-per-block` is a top-level attribute of the main
 object that specifies how many bytes are stored in each block.
 
+See `group_to_string` in [elgamal.py](../src/elgamal.py).
+
 #### The first blocks
 
 The El-Gamal plaintext of the first block of a slice begins

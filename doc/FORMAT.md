@@ -173,6 +173,8 @@ for the same plaintext.  We just changed the random number from `r`
 to `r+s`.  This is called a rerandomization of the ciphertext.  This
 rerandomization is applied to each block of the safe.
 
+See `_eg_rerandomize_block` in [safe.py](../src/safe.py).
+
 Before we discuss the details of the format of a safe, we
 look at the primitives.
 

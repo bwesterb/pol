@@ -436,7 +436,7 @@ The data of a slice starts with a single format byte.
 
 See `string_to_son` in [serialization.py](../src/serialization.py).
 
-### Access slices
+#### Access slices
 
 The key of an append slice for a password `pwd` is
 
@@ -459,9 +459,10 @@ The data of an access slice is the quadruple
  * **key** is
     
     * The full key of the container when this is a master password access slice.
-    * The list key of the container when this is a list-only password access slice.
-    * The append key of the container when this is an append-only password access
-      slice.
+    * The list key of the container when this is a list-only password
+      access slice.
+    * The append key of the container when this is an append-only
+      password access slice.
 
  * **index** is
 
@@ -469,6 +470,17 @@ The data of an access slice is the quadruple
       access slice.
     * The index of the append slice when this is the append-only password access
       slice.
+
+#### Key derivation
+
+The list key `Klist` of a container is derivable from the full key `Kfull`
+of a container.  Also, the append key `Kappend` is derivable from the
+list key `Klist`.  This is done as follows.
+
+    Klist     = KD([ Kfull, KD_LIST ])
+    Kappend   = KD([ Klist, KD_APPEND ])
+    KD_LIST   = d5 3d 37 6a 7d b4 98 95 6d 7d 7f 5e 57 05 09 d5
+    KD_APPEND = 76 00 1c 34 4c bd 9e 73 a6 b5 bd 48 b6 72 66 d9
 
 #### Append slices
 

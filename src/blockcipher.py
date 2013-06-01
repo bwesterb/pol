@@ -47,7 +47,7 @@ class BlockCipher(object):
         """ size of key in bytes """
         raise NotImplementedError
 
-    def new_stream(self, key, iv):
+    def new_stream(self, key, iv, offset=0):
         raise NotImplementedError
 
 class _AESStream(BaseStream):

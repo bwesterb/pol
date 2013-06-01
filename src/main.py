@@ -67,8 +67,7 @@ cracktimes = {'seconds':     10,
               'astronomical':10*60*60*24*365*1000000000}
 
 # TODO add commands
-#   pol import
-#       rename
+#   pol rename
 #       regenerate
 #       change-password
 

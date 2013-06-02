@@ -201,6 +201,30 @@ uses *El Gamal rerandomization*, *scrypt*, *AES-256 CTR*,
 *ECIES* on *secp160r1*, *SHA-256*, *Fortuna* and *msgpack*.
 For actual details, see [FORMAT.md](doc/FORMAT.md).
 
+Attribution
+-----------
+
+The developers of pol are
+
+ * Bas Westerbaan
+
+Others have been involved indirectly:
+
+ * Bart Jacobs suggested using El-Gamal rerandomization
+ * Wieb Bosma and Eric Cator have helped approximating the density
+   of the safe primes.
+
+`pol` builds on dozens of other (open source) projects, notably:
+
+ * [pycrypto](https://www.dlitz.net/software/pycrypto/)
+ * [gmpy](http://code.google.com/p/gmpy/)
+ * [seccure](http://point-at-infinity.org/seccure/)
+ * [zxcvbn](https://tech.dropbox.com/2012/04/zxcvbn-realistic-password-strength-estimation/)
+
+Finally, the following projects have influenced the design.
+
+ * [Password Safe](http://passwordsafe.sourceforge.net/quickstart.shtml)
+
 [![Build Status](https://travis-ci.org/bwesterb/pol.png)](
    https://travis-ci.org/bwesterb/pol)
       

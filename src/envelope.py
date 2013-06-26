@@ -64,7 +64,7 @@ class SeccureEnvelope(Envelope):
         if randfunc is None:
             randfunc = Crypto.Random.new().read
         privkey = randfunc(self.curve.key_bytes)
-        pubkey = self.curve.passphrase_to_pubkey(privkey).to_string()
+        pubkey = self.curve.passphrase_to_pubkey(privkey).to_bytes()
         return (pubkey, privkey)
     def seal(self, msg, pubkey):
         p = self.curve.pubkey_from_string(pubkey)

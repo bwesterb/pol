@@ -35,6 +35,7 @@ pol /pɵl/ is a password manager with two important features:
       containers.  Each container is opened by its own passwords.
       If someone does not have a password of a container, he cannot
       prove the existence of the container in any way.
+      Even if he has multiple versions of your safe!
       Thus if you are forced to open your pol safe, you can give
       a password to an uninteresting container and keep your real
       secrets safe.

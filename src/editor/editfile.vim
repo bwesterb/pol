@@ -4,6 +4,14 @@
 " Filenames:	pol-edit-file
 " Last Change:	2013 July 21
 
+" TODO do not highlight faulty lines like
+"
+"         CONTAINER wee
+"
+"      and
+"
+"         only-the-key-no-secret
+
 if exists("b:current_syntax")
   finish
 endif

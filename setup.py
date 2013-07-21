@@ -33,8 +33,11 @@ setup(
               'pol.tests',
               'pol.version',
               'pol.passgen',
+              'pol.editor',
               'pol.importers'],
     package_dir={'pol': 'src'},
+    package_data={'pol': [
+                    'editor/editfile.vim']},
     license='GPL 3.0',
     install_requires=install_requires,
     entry_points = {

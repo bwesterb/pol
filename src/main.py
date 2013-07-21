@@ -42,6 +42,8 @@ import pol.progressbar
 
 import pol.importers.keepass
 import pol.importers.psafe3
+import pol.editfile
+import pol.editor
 import pol.speed
 
 import msgpack
@@ -268,6 +270,21 @@ class Program(object):
         p_remove_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
                     help='Compose passwords with the contents of these files')
         p_remove.set_defaults(func=self.cmd_remove)
+
+        # pol edit
+        p_edit = subparsers.add_parser('edit', add_help=False,
+                    help='Edit entries in an texteditor')
+        p_edit_b = p_edit.add_argument_group('basic options')
+        p_edit_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_edit_b.add_argument('regex', nargs='?',
+                    help='Only edit entries with keys matching this regex')
+        p_edit_a = p_edit.add_argument_group('basic options')
+        p_edit_a.add_argument('--passwords', '-p', metavar='PW', nargs='+',
+                    help='Password(s) of the container(s) to edit')
+        p_edit_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
+        p_edit.set_defaults(func=self.cmd_edit)
 
         # pol touch
         p_touch = subparsers.add_parser('touch', add_help=False,
@@ -620,7 +637,7 @@ class Program(object):
         except pol.safe.SafeAlreadyExistsError:
             print '%s exists.  Use -f to override.' % self.safe_path
             return -10
-    
+
     def cmd_touch(self):
         with self._open_safe() as safe:
             safe.touch()
@@ -885,6 +902,64 @@ class Program(object):
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()
             # TODO do rerandomization in parallel
+
+    def cmd_edit(self):
+        if self.args.regex:
+            try:
+                regex = re.compile(self.args.regex, re.I)
+            except re.error as e:
+                sys.stderr.write("Invalid regex: %s\n" % e.message)
+                return -16
+        else:
+            regex = None
+        if not self.args.passwords:
+            passwords = [getpass.getpass('Enter password: ')]
+        else:
+            passwords = self.args.passwords
+        with self._open_safe() as safe:
+            # First, generate the file to edit
+            editfile = {}
+            container_id = 1
+            secret_id = 1
+            secrets = {}
+            containers = {}
+            entries = {}
+            for password in passwords:
+                for container in self._open_containers(safe, password):
+                    if not container.has_secrets:
+                        continue
+                    editfile[container_id] = []
+                    containers[container_id] = container
+                    entries[container_id] = []
+                    for entry in container.list():
+                        if regex and not regex.search(entry.key):
+                            continue
+                        entries[container_id].append(entry)
+                        secrets[secret_id] = entry.secret
+                        current_secret_id = secret_id
+                        secret_id += 1
+                        editfile[container_id].append((
+                                    entry.key,
+                                    current_secret_id,
+                                    entry.note))
+            to_edit = pol.editfile.dump(editfile)
+            line = None
+            # Let the user edit the file.
+            while True:
+                try:
+                    edited = pol.editor.edit(to_edit,
+                                filename='pol-edit-file',
+                                line=line,
+                                syntax='editfile')
+                except pol.editor.NoChanges:
+                    sys.stderr.write("No changes.  Aborting.\n")
+                    return -21
+                try:
+                    parsed = pol.editfile.parse(edited)
+                    break
+                except pol.editfile.ParseException as e:
+                    line = e.lineno
+                    to_edit = pol.editfile.insert_error(edited, e)
 
     def cmd_list(self):
         if self.args.regex:

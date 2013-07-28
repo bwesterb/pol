@@ -101,7 +101,7 @@ passwords of your containers.
     
       A container can have an append-password.  With this password you
       can only add entries.  You cannot see the existing entries.
-      Leave blank if you do not want an append-passowrd.
+      Leave blank if you do not want an append-password.
     
         Enter append-password [no append-password]: 
     
@@ -197,7 +197,7 @@ You can filter results as follows
 Technical background
 --------------------
 
-For those that like context-free mumbo-jumbo: pol
+For those who like context-free mumbo-jumbo: pol
 uses *El Gamal rerandomization*, *scrypt*, *AES-256 CTR*,
 *ECIES* on *secp160r1*, *SHA-256*, *Fortuna* and *msgpack*.
 For actual details, see [FORMAT.md](doc/FORMAT.md).

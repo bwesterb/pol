@@ -570,7 +570,7 @@ class Program(object):
                 print
                 print "  A container can have an append-password.  With this password you"
                 print "  can only add entries.  You cannot see the existing entries."
-                print "  Leave blank if you do not want an append-passowrd."
+                print "  Leave blank if you do not want an append-password."
                 print
             if interactive:
                 appendpw = pol.terminal.zxcvbn_getpass(

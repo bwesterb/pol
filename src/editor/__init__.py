@@ -20,6 +20,7 @@ def get_editor():
             return os.environ[var]
     return 'vi'
 
+# TODO can we prevent creating a file with the entries?
 def edit(s, filename=None, line=None, syntax=None):
     """ Opens an external editor for the string s. """
     if not filename:

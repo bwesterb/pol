@@ -27,7 +27,7 @@ setup(
     description='pol, a modern password manager',
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',
-    url='http://github.com/bwesterb/pol/',
+    url='https://getpol.org',
     packages=['pol',
               'pol.tests',
               'pol.version',

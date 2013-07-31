@@ -36,7 +36,7 @@ def _grammar():
                 + Suppress(lineEnd))
     comment = Suppress(lineEnd | '#' + SkipTo(lineEnd))
     line = comment | entry
-    containerLine = containerKeyword + number + Suppress(lineEnd)
+    containerLine = containerKeyword + number + comment
     containerBlock = ZeroOrMore(comment) + Group(containerLine 
                                                   + Group(OneOrMore(line)))
     multipleContainers = OneOrMore(containerBlock)

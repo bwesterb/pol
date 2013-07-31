@@ -19,8 +19,9 @@ endif
 syn case match
 
 syn match poleditKeyString              "^[^\" ]\+" nextgroup=poleditSecretNumber,poleditSecretQString,poleditSecretString
-syn match poleditContainerLine          "^CONTAINER \d\+"
+syn match poleditContainerLine          "^CONTAINER \d\+ *" nextgroup=poleditInlineComment
 syn match poleditComment                "^#.*"
+syn match poleditInlineComment          "#.*" contained
 
 syn region poleditKeyQString            start=/^"/ skip='\\.' end='"' oneline nextgroup=poleditSecretNumber,poleditSecretQString,poleditSecretString
 syn region poleditSecretQString         start=/ \+"/ skip='\\.' end='"' oneline contained nextgroup=poleditNote,poleditQNote
@@ -32,6 +33,7 @@ syn region poleditQNote                 start=/ \+"/ skip='\\.' end='"' oneline 
 syn match poleditEscape                 "\\[n\\]" contained
 
 hi def link poleditComment              Comment
+hi def link poleditInlineComment        Comment
 hi def link poleditContainerLine        Statement
 hi def link poleditKeyQString           Identifier
 hi def link poleditKeyString            Identifier

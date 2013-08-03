@@ -2,10 +2,14 @@
 
 import os
 import shutil
+import logging
 import os.path
 import tempfile
 import subprocess
+
 import pkg_resources
+
+l = logging.getLogger(__name__)
 
 class EditorException(OSError):
     pass
@@ -40,6 +44,7 @@ def edit(s, filename=None, line=None, syntax=None):
             args.append('-S')
             args.append(pkg_resources.resource_filename(
                                 __name__, '%s.vim' % syntax))
+        l.debug("Calling %s" % str(args))
         if subprocess.call(args) != 0:
             raise EditorException
         if os.path.getmtime(file_path) == old_mtime:

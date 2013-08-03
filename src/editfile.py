@@ -16,12 +16,13 @@ def insert_error(s, e):
     return s_head + message + s_tail
 
 def create_grammar(container_ids, secret_ids):
+    """ Create the grammar for the editfile """
     from pyparsing import (nums, alphas, lineEnd, stringEnd,
-                            OneOrMore, ZeroOrMore, SkipTo, Optional,
+                            OneOrMore, ZeroOrMore, SkipTo, Optional, And,
                             Word, CharsNotIn, Empty, QuotedString, Literal,
-                            Suppress, Group, Combine, originalTextFor,
+                            Suppress, Group, Combine, originalTextFor, Forward,
                             ParserElement)
-
+    # Read from bottom to top
     whiteSpaceChars = ' \t'
     ParserElement.setDefaultWhitespaceChars(whiteSpaceChars)
     word = Empty() + CharsNotIn(whiteSpaceChars + '\n')
@@ -50,16 +51,53 @@ def create_grammar(container_ids, secret_ids):
     comment = Suppress(lineEnd | '#' + SkipTo(lineEnd))
     line = comment | entry
     containerLine = containerKeyword + containerId + comment
-    containerBlock = ZeroOrMore(comment) + Group(containerLine 
-                                                  + Group(OneOrMore(line)))
-    multipleContainers = OneOrMore(containerBlock)
-    oneContainer = OneOrMore(line).setParseAction(lambda s,l,t: [[None, t]])
-    grammar = (multipleContainers | oneContainer) + stringEnd
+    # Instead of the following recursive grammar, we could have simply used
+    #
+    #     containerBlock = ZeroOrMore(comment) + Group(containerLine
+    #                                                + Group(OneOrMore(line)))
+    #     multipleContainers = OneOrMore(containerBlock)
+    #
+    # but then any parsing error in line will result in a "expected stringEnd"
+    # or "expected CONTAINER".
+    _multipleContainers_head = Forward()
+    _multipleContainers_body = Forward()
+    _multipleContainers_head << (stringEnd | comment + _multipleContainers_head
+                    | containerLine + _multipleContainers_body)
+    _multipleContainers_body << (stringEnd
+                    | (containerLine | line) + _multipleContainers_body)
+    _multipleContainers_entry = And([entry])
+    multipleContainers = And([_multipleContainers_head]) # TODO ibidem below
+    containerLine.setParseAction(lambda s,l,t: [[None, t[0]]])
+    def multipleContainersParseAction(s, loc, tokens):
+        curEntries = []
+        curId = None
+        ret = []
+        for t in tuple(tokens) + ((None, None),):
+            if t[0] is not None:
+                assert curId is not None
+                curEntries.append(t)
+                continue
+            if curId is not None:
+                ret.append([curId, curEntries])
+            curId = t[1]
+            curEntries = []
+        return ret
+    multipleContainers.setParseAction(multipleContainersParseAction)
+    # Instead of the following recursive grammar, we could have simply used
+    #
+    #     oneContainer = ZeroOrMore(line) + stringEnd
+    #
+    # but then any parsing error in a line will result in a "expected stringEnd"
+    _oneContainer = Forward()
+    _oneContainer << (stringEnd | (line + _oneContainer))
+    oneContainer = And([_oneContainer]) # TODO is there a "Singleton"?
+    oneContainer.setParseAction(lambda s,l,t: [[None, t]])
+    grammar = multipleContainers | oneContainer
     return grammar
 
 def parse(s, container_ids, secret_ids):
     """ Parses an editfile.  Returns an object of the form:
-        
+
             { container_id: [[key, secret, note], ...] } """
     ret = {}
     grammar = create_grammar(container_ids, secret_ids)

@@ -1,5 +1,6 @@
 """ parser and dumper for the file format used by `pol edit' """
 
+import re
 import cStringIO as StringIO
 from pyparsing import ParseException
 
@@ -12,8 +13,33 @@ def insert_error(s, e):
     message = ''
     if line_start + 1 != e.loc:
         message += '#%s^\n' % (' '*(e.loc - line_start - 2))
-    message += '# %s\n' % str(e)
+    message += '# ERROR %s\n' % str(e)
     return s_head + message + s_tail
+
+def remove_errors(s):
+    """ Removes error messages inserted by `insert_error' from s """
+    # Removes error messages at the start of the string.
+    while s.startswith('# ERROR'):
+        s = s[s.find('\n')+1:]
+    while True:
+        # Find an error message in the middle of the string
+        index = s.find('\n# ERROR')
+        if index == -1:
+            break
+        # Check if the previous line is a column indicator, like this:
+        #                                        ^
+        # and remove it.
+        pIndex = s.rfind('\n', 0, index)
+        if pIndex != -1 and re.match('^# *\\^', s[pIndex+1:index]):
+            s = s[:pIndex] + s[index:]
+            continue
+        # Remove the error message line.
+        nIndex = s.find('\n', index+1)
+        if nIndex == -1:
+            s = s[:index+1]
+        else:
+            s = s[:index+1] + s[nIndex+1:]
+    return s
 
 def create_grammar(container_ids, secret_ids):
     """ Create the grammar for the editfile """

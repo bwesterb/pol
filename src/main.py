@@ -955,6 +955,7 @@ class Program(object):
                                 filename='pol-edit-file',
                                 line=line,
                                 syntax='editfile')
+                    edited = pol.editfile.remove_errors(edited)
                 except pol.editor.NoChanges:
                     sys.stderr.write("No changes.  Aborting.\n")
                     return -21

@@ -13,14 +13,17 @@
 "         only-the-key-no-secret
 
 if exists("b:current_syntax")
-  finish
+  se syntax=off
+  " FIXME in a normal installation, the previous line should be "finish",
+  " however, when we force this syntax via the "-S" commandline option, we
+  " want to disable the current syntax.
 endif
 
 syn case match
 
 syn match poleditKeyString              "^[^\" ]\+" nextgroup=poleditSecretNumber,poleditSecretQString,poleditSecretString
 syn match poleditContainerLine          "^CONTAINER \d\+ *" nextgroup=poleditInlineComment
-syn match poleditComment                "^#.*"
+syn match poleditComment                "^#.*" contains=poleditError
 syn match poleditInlineComment          "#.*" contained
 
 syn region poleditKeyQString            start=/^"/ skip='\\.' end='"' oneline nextgroup=poleditSecretNumber,poleditSecretQString,poleditSecretString
@@ -31,6 +34,7 @@ syn match poleditSecretNumber           " *#\d\+" contained nextgroup=poleditNot
 syn match poleditNote                   " \+[^\"]\+$" contained
 syn region poleditQNote                 start=/ \+"/ skip='\\.' end='"' oneline contained contains=poleditEscape
 syn match poleditEscape                 "\\[n\\]" contained
+syn match poleditError                  "ERROR" contained
 
 hi def link poleditComment              Comment
 hi def link poleditInlineComment        Comment
@@ -43,5 +47,6 @@ hi def link poleditSecretNumber         Type
 hi def link poleditNote                 String
 hi def link poleditQNote                String
 hi def link poleditEscape               Preproc
+hi def link poleditError                Error
 
 let b:current_syntax = "poledit"

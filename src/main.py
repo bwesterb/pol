@@ -942,6 +942,10 @@ class Program(object):
                                     entry.key,
                                     current_secret_id,
                                     entry.note))
+                    container_id += 1
+            if not containers:
+                sys.stderr.write('Password(s) did not open any container with secrets\n')
+                return -1
             to_edit = pol.editfile.dump(editfile)
             line = None
             # Let the user edit the file.
@@ -955,12 +959,15 @@ class Program(object):
                     sys.stderr.write("No changes.  Aborting.\n")
                     return -21
                 try:
-                    parsed = pol.editfile.parse(edited)
+                    parsed = pol.editfile.parse(edited, containers.keys(),
+                                                    secrets.keys())
                     break
                 except pol.editfile.ParseException as e:
                     line = e.lineno
                     to_edit = pol.editfile.insert_error(edited, e)
-
+            # Now, apply changes.
+            import pprint
+            pprint.pprint(parsed)
     def cmd_list(self):
         if self.args.regex:
             try:

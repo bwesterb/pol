@@ -15,10 +15,10 @@ def insert_error(s, e):
     message += '# %s\n' % str(e)
     return s_head + message + s_tail
 
-def _grammar():
+def create_grammar(container_ids, secret_ids):
     from pyparsing import (nums, alphas, lineEnd, stringEnd,
                             OneOrMore, ZeroOrMore, SkipTo, Optional,
-                            Word, CharsNotIn, Empty, QuotedString,
+                            Word, CharsNotIn, Empty, QuotedString, Literal,
                             Suppress, Group, Combine, originalTextFor,
                             ParserElement)
 
@@ -27,28 +27,42 @@ def _grammar():
     word = Empty() + CharsNotIn(whiteSpaceChars + '\n')
     quotedString = QuotedString(quoteChar='"', escChar='\\').setParseAction(
                         lambda s,l,t: t[0].replace("\\n", "\n"))
-    number = Word(nums).setParseAction(lambda s,l,t: int(t[0]))
+    def secretIdNumberParseAction(s, loc, tokens):
+        v = int(tokens[0])
+        if not v in secret_ids:
+            raise ParseException(s, loc, "Not a valid secret id")
+        return v
+    secretIdNumber = Word(nums).setParseAction(secretIdNumberParseAction)
+    def containerIdParseAction(s, loc, tokens):
+        v = int(tokens[0])
+        if not v in container_ids:
+            raise ParseException(s, loc, "Not a valid container id")
+        return v
+    containerId = Word(nums).setParseAction(containerIdParseAction)
     key = quotedString | word
-    secret = Suppress('#') + number | quotedString | word
+    secretString = ~Literal('#') + (quotedString | word)
+    secretId = Suppress('#') + secretIdNumber
+    secret = secretString | secretId
     note = quotedString | originalTextFor(OneOrMore(word))
     containerKeyword = Suppress('CONTAINER')
     entry = (~containerKeyword + Group(key + secret + Optional(note))
                 + Suppress(lineEnd))
     comment = Suppress(lineEnd | '#' + SkipTo(lineEnd))
     line = comment | entry
-    containerLine = containerKeyword + number + comment
+    containerLine = containerKeyword + containerId + comment
     containerBlock = ZeroOrMore(comment) + Group(containerLine 
                                                   + Group(OneOrMore(line)))
     multipleContainers = OneOrMore(containerBlock)
     oneContainer = OneOrMore(line).setParseAction(lambda s,l,t: [[None, t]])
-    return (multipleContainers | oneContainer) + stringEnd
-grammar = _grammar()
+    grammar = (multipleContainers | oneContainer) + stringEnd
+    return grammar
 
-def parse(s):
+def parse(s, container_ids, secret_ids):
     """ Parses an editfile.  Returns an object of the form:
         
             { container_id: [[key, secret, note], ...] } """
     ret = {}
+    grammar = create_grammar(container_ids, secret_ids)
     for container_id, entries in grammar.parseString(s):
         ret[container_id] = []
         for entry in entries:
@@ -93,8 +107,10 @@ def dump(d):
                     escape_note(note) if note else None))
     # Now, determine alignment
     max_key_len = max(max(len(key) for key, secret, note in entries)
+                                if entries else 1
                             for entries in d2.itervalues())
     max_secret_len = max(max(len(secret) for key, secret, note in entries)
+                                if entries else 1
                             for entries in d2.itervalues())
     first_container = True
     # And dump!

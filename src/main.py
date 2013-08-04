@@ -279,6 +279,8 @@ class Program(object):
                     help='show this help message and exit')
         p_edit_b.add_argument('regex', nargs='?',
                     help='Only edit entries with keys matching this regex')
+        p_edit_b.add_argument('-s', '--secrets', action='store_true',
+                    help='Edit the secrets, instead of hiding them')
         p_edit_a = p_edit.add_argument_group('basic options')
         p_edit_a.add_argument('--passwords', '-p', metavar='PW', nargs='+',
                     help='Password(s) of the container(s) to edit')
@@ -935,12 +937,16 @@ class Program(object):
                         if regex and not regex.search(entry.key):
                             continue
                         entries[container_id].append(entry)
-                        secrets[secret_id] = entry.secret
-                        current_secret_id = secret_id
-                        secret_id += 1
+                        if self.args.secrets:
+                            secret = entry.secret
+                        else:
+                            secrets[secret_id] = entry.secret
+                            current_secret_id = secret_id
+                            secret_id += 1
+                            secret = current_secret_id
                         editfile[container_id].append((
                                     entry.key,
-                                    current_secret_id,
+                                    secret,
                                     entry.note))
                     container_id += 1
             if not containers:

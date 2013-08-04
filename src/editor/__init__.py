@@ -47,9 +47,10 @@ def edit(s, filename=None, line=None, syntax=None):
         l.debug("Calling %s" % str(args))
         if subprocess.call(args) != 0:
             raise EditorException
-        if os.path.getmtime(file_path) == old_mtime:
-            raise NoChanges
         with open(file_path, 'r') as f:
-            return f.read()
+            s2 = f.read()
+        if s == s2:
+            raise NoChanges
+        return s2
     finally:
         shutil.rmtree(dir_path)

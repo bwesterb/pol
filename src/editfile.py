@@ -59,7 +59,11 @@ def create_grammar(container_ids, secret_ids):
     ParserElement.setDefaultWhitespaceChars(whiteSpaceChars)
     word = Empty() + CharsNotIn(whiteSpaceChars + '\n')
     quotedString = QuotedString(quoteChar='"', escChar='\\').setParseAction(
-                        lambda s,l,t: t[0].replace("\\n", "\n"))
+                        # NOTE the second replace is a work-around for
+                        #      pyparsing bug #68.
+                        #       https://sourceforge.net/p/pyparsing/bugs/68/
+                        lambda s,l,t: t[0].replace("\\n", "\n").replace(
+                                                   "\\\\", "\\"))
     def secretIdNumberParseAction(s, loc, tokens):
         v = int(tokens[0])
         if not v in secret_ids:

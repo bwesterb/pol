@@ -4,6 +4,8 @@ import re
 import cStringIO as StringIO
 from pyparsing import ParseException
 
+# TODO add unittests
+
 def insert_error(s, e):
     """ Insert the ParseException e into s. """
     message = ''

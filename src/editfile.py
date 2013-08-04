@@ -6,13 +6,17 @@ from pyparsing import ParseException
 
 def insert_error(s, e):
     """ Insert the ParseException e into s. """
-    line_end = s.find('\n', e.loc)
-    line_start = s.rfind('\n', 0, e.loc)
-    s_head = s[:line_end+1]
-    s_tail = s[line_end+1:]
     message = ''
-    if line_start + 1 != e.loc:
-        message += '#%s^\n' % (' '*(e.loc - line_start - 2))
+    if e.loc == 0:
+        s_head = ''
+        s_tail = s
+    else:
+        line_end = s.find('\n', e.loc)
+        line_start = s.rfind('\n', 0, e.loc)
+        s_head = s[:line_end+1]
+        s_tail = s[line_end+1:]
+        if line_start + 1 != e.loc:
+            message += '#%s^\n' % (' '*(e.loc - line_start - 2))
     message += '# ERROR %s\n' % str(e)
     return s_head + message + s_tail
 
@@ -128,11 +132,21 @@ def parse(s, container_ids, secret_ids):
     ret = {}
     grammar = create_grammar(container_ids, secret_ids)
     for container_id, entries in grammar.parseString(s):
+        if container_id is None:
+            if len(container_ids) != 1:
+                raise ParseException(s, msg='Expected multiple containers')
+            container_id = container_ids[0]
+        if container_id in ret:
+            raise ParseException(s, msg='Duplicate container_id %s'
+                                            % container_id)
         ret[container_id] = []
         for entry in entries:
             ret[container_id].append((entry[0],
                                       entry[1],
                                       entry[2] if len(entry) >= 3 else None))
+    for container_id in container_ids:
+        if container_id not in ret:
+            raise ParseException(s, msg='Missing container %s' % container_id)
     return ret
 
 def quote_string(s):

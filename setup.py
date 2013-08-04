@@ -13,6 +13,7 @@ install_requires = [
     'python-mcrypt >=1.1',   #      ibidem
     'lockfile >=0.8',        #      ibidem
     'PyYAML >=3',            #      ibidem
+    'pyparsing >=1.5.6, <2.0.0', #   ibidem
     'zxcvbn >=1.0',
     'seccure >=0.2',
     'demandimport >=0.2.1',
@@ -32,8 +33,11 @@ setup(
               'pol.tests',
               'pol.version',
               'pol.passgen',
+              'pol.editor',
               'pol.importers'],
     package_dir={'pol': 'src'},
+    package_data={'pol': [
+                    'editor/editfile.vim']},
     license='GPL 3.0',
     install_requires=install_requires,
     entry_points = {

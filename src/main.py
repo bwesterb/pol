@@ -42,6 +42,8 @@ import pol.progressbar
 
 import pol.importers.keepass
 import pol.importers.psafe3
+import pol.editfile
+import pol.editor
 import pol.speed
 
 import msgpack
@@ -268,6 +270,25 @@ class Program(object):
         p_remove_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
                     help='Compose passwords with the contents of these files')
         p_remove.set_defaults(func=self.cmd_remove)
+
+        # pol edit
+        p_edit = subparsers.add_parser('edit', add_help=False,
+                    help='Edit entries in a texteditor')
+        p_edit_b = p_edit.add_argument_group('basic options')
+        p_edit_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_edit_b.add_argument('regex', nargs='?',
+                    help='Only edit entries with keys matching this regex')
+        p_edit_b.add_argument('-s', '--secrets', action='store_true',
+                    help='Edit the secrets, instead of hiding them')
+        p_edit_b.add_argument('-m', '--multiple', action='store_true',
+                    help='Enter more than one password to edit multiple containers')
+        p_edit_a = p_edit.add_argument_group('basic options')
+        p_edit_a.add_argument('--passwords', '-p', metavar='PW', nargs='+',
+                    help='Password(s) of the container(s) to edit')
+        p_edit_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
+        p_edit.set_defaults(func=self.cmd_edit)
 
         # pol touch
         p_touch = subparsers.add_parser('touch', add_help=False,
@@ -620,7 +641,7 @@ class Program(object):
         except pol.safe.SafeAlreadyExistsError:
             print '%s exists.  Use -f to override.' % self.safe_path
             return -10
-    
+
     def cmd_touch(self):
         with self._open_safe() as safe:
             safe.touch()
@@ -885,6 +906,102 @@ class Program(object):
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()
             # TODO do rerandomization in parallel
+
+    def cmd_edit(self):
+        if self.args.regex:
+            try:
+                regex = re.compile(self.args.regex, re.I)
+            except re.error as e:
+                sys.stderr.write("Invalid regex: %s\n" % e.message)
+                return -16
+        else:
+            regex = None
+        if not self.args.passwords:
+            if self.args.multiple:
+                passwords = []
+                first = True
+                while True:
+                    password = getpass.getpass('Enter password: ' if first
+                                    else 'Enter next password [done]: ')
+                    if first:
+                        first = False
+                    if not password:
+                        break
+                    passwords.append(password)
+            else:
+                passwords = [getpass.getpass('Enter password: ')]
+        else:
+            passwords = self.args.passwords
+        with self._open_safe() as safe:
+            # First, generate the file to edit
+            editfile = {}
+            container_id = 1
+            secret_id = 1
+            secrets = {}
+            containers = {}
+            entries = {}
+            for password in passwords:
+                for container in self._open_containers(safe, password):
+                    if not container.has_secrets:
+                        continue
+                    editfile[container_id] = []
+                    containers[container_id] = container
+                    entries[container_id] = []
+                    for entry in container.list():
+                        if regex and not regex.search(entry.key):
+                            continue
+                        entries[container_id].append(entry)
+                        if self.args.secrets:
+                            secret = entry.secret
+                        else:
+                            secrets[secret_id] = entry.secret
+                            current_secret_id = secret_id
+                            secret_id += 1
+                            secret = current_secret_id
+                        editfile[container_id].append((
+                                    entry.key,
+                                    secret,
+                                    entry.note))
+                    container_id += 1
+            if not containers:
+                sys.stderr.write('Password(s) did not open any container with secrets\n')
+                return -1
+            to_edit = pol.editfile.dump(editfile)
+            line = None
+            # Let the user edit the file.
+            while True:
+                try:
+                    edited = pol.editor.edit(to_edit,
+                                filename='pol-edit-file',
+                                line=line,
+                                syntax='editfile')
+                    edited = pol.editfile.remove_errors(edited)
+                except pol.editor.NoChanges:
+                    sys.stderr.write("No changes.  Aborting.\n")
+                    return -21
+                try:
+                    parsed = pol.editfile.parse(edited, containers.keys(),
+                                                    secrets.keys())
+                    break
+                except pol.editfile.ParseException as e:
+                    to_edit = pol.editfile.insert_error(edited, e)
+            # Now, apply changes.
+            for container_id in parsed:
+                container = containers[container_id]
+                for i, new_entry in enumerate(parsed[container_id]):
+                    key, secret, note = new_entry
+                    if isinstance(secret, int):
+                        secret = secrets[secret]
+                    if i < len(entries[container_id]):
+                        entry = entries[container_id][i]
+                        entry.key = key
+                        entry.note = note
+                        entry.secret = secret
+                    else:
+                        container.add(key, note, secret)
+                for i in xrange(len(parsed[container_id]),
+                                len(entries[container_id])):
+                    entries[container_id][i].remove()
 
     def cmd_list(self):
         if self.args.regex:

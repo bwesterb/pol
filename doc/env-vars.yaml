@@ -1,3 +1,4 @@
 # Description of environmental variables recognized by pol
 POL_PROFILE:                    If set, enables profiling
 POL_NO_DEMANDIMPORT:            If set, disables lazy module loading
+POL_EDITOR:                     The external editor pol should use

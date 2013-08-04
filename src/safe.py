@@ -232,6 +232,9 @@ class Container(object):
     def can_add(self):
         raise NotImplementedError
     @property
+    def has_secrets(self):
+        raise NotImplementedError
+    @property
     def id(self):
         """ An identifier for the container. """
         raise NotImplementedError
@@ -468,7 +471,9 @@ class ElGamalSafe(Safe):
         @property
         def can_add(self):
             return bool(self.secret_data) or bool(self.append_data)
-
+        @property
+        def has_secrets(self):
+            return bool(self.secret_data)
         @property
         def id(self):
             return (self.append_slice.first_index if self.append_slice else

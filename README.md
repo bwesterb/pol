@@ -194,6 +194,63 @@ You can filter results as follows
      bios.notebook
      bios.pc
 
+### Edit entries
+
+To edit all entries in a container, use
+
+    $ pol edit
+    Enter password:
+
+This will open up your default text editor (`$EDITOR`) with, in this example:
+
+    github        #1 user: johndoo
+    router        #2
+    facebook      #3 email: john@doo.org
+    bios.notebook #4
+    bios.pc       #5
+
+Simply edit the entries, save the file and exit the editor.
+`pol` will apply the changes.  Remove lines to remove entries;
+reorder lines to reorder entries and add a line to add an entry.
+
+By default, the secrets are replaced by pointers like `#2`.
+To change a secret, simply replace the pointer by the secret.  For instance:
+
+    github        mypassword user: johndoo
+
+To show the secrets by default, use `pol edit -s`.
+
+You can filter the entries to edit: executing `pol edit bios` will present
+the following file to edit.
+
+    bios.notebook #1
+    bios.pc       #2
+
+With `pol edit -m` you can enter multiple passwords to edit entries
+of multiple containers.  Enter as many passwords as you like and
+leave the prompt blank to continue to the editor:
+
+    $ pol edit -m
+    Enter password: 
+    Enter next password [done]: 
+    Enter next password [done]: 
+
+You will be presented a file like:
+
+    CONTAINER 1
+    github        #1 user: johndoo
+    router        #2
+    facebook      #3 email: john@doo.org
+    bios.notebook #4
+    bios.pc       #5
+
+    CONTAINER 2
+    supersecret   #6
+    recoverykey   #7
+
+Move entries under different headers to move them between containers.
+It is that simple.
+
 Technical background
 --------------------
 

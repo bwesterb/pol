@@ -5,7 +5,7 @@ import cStringIO as StringIO
 from pyparsing import ParseException
 
 def insert_error(s, e):
-    """ Insert the ParsingException e into s. """
+    """ Insert the ParseException e into s. """
     line_end = s.find('\n', e.loc)
     line_start = s.rfind('\n', 0, e.loc)
     s_head = s[:line_end+1]

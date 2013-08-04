@@ -970,7 +970,6 @@ class Program(object):
                                                     secrets.keys())
                     break
                 except pol.editfile.ParseException as e:
-                    line = e.lineno
                     to_edit = pol.editfile.insert_error(edited, e)
             # Now, apply changes.
             import pprint

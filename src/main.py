@@ -273,7 +273,7 @@ class Program(object):
 
         # pol edit
         p_edit = subparsers.add_parser('edit', add_help=False,
-                    help='Edit entries in an texteditor')
+                    help='Edit entries in a texteditor')
         p_edit_b = p_edit.add_argument_group('basic options')
         p_edit_b.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')

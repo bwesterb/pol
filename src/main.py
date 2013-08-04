@@ -972,8 +972,23 @@ class Program(object):
                 except pol.editfile.ParseException as e:
                     to_edit = pol.editfile.insert_error(edited, e)
             # Now, apply changes.
-            import pprint
-            pprint.pprint(parsed)
+            for container_id in parsed:
+                container = containers[container_id]
+                for i, new_entry in enumerate(parsed[container_id]):
+                    key, secret, note = new_entry
+                    if isinstance(secret, int):
+                        secret = secrets[secret]
+                    if i < len(entries[container_id]):
+                        entry = entries[container_id][i]
+                        entry.key = key
+                        entry.note = note
+                        entry.secret = secret
+                    else:
+                        container.add(key, note, secret)
+                for i in xrange(len(parsed[container_id]),
+                                len(entries[container_id])):
+                    entries[container_id][i].remove()
+
     def cmd_list(self):
         if self.args.regex:
             try:

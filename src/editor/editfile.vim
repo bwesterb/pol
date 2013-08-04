@@ -33,7 +33,7 @@ syn match poleditSecretNumber           " *#\d\+" contained nextgroup=poleditNot
 
 syn match poleditNote                   " \+[^\"]\+$" contained
 syn region poleditQNote                 start=/ \+"/ skip='\\.' end='"' oneline contained contains=poleditEscape
-syn match poleditEscape                 "\\[n\\]" contained
+syn match poleditEscape                 "\\[n\\\"]" contained
 syn match poleditError                  "ERROR" contained
 
 hi def link poleditComment              Comment

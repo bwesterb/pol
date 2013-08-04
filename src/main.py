@@ -281,6 +281,8 @@ class Program(object):
                     help='Only edit entries with keys matching this regex')
         p_edit_b.add_argument('-s', '--secrets', action='store_true',
                     help='Edit the secrets, instead of hiding them')
+        p_edit_b.add_argument('-m', '--multiple', action='store_true',
+                    help='Enter more than one password to edit multiple containers')
         p_edit_a = p_edit.add_argument_group('basic options')
         p_edit_a.add_argument('--passwords', '-p', metavar='PW', nargs='+',
                     help='Password(s) of the container(s) to edit')
@@ -915,7 +917,19 @@ class Program(object):
         else:
             regex = None
         if not self.args.passwords:
-            passwords = [getpass.getpass('Enter password: ')]
+            if self.args.multiple:
+                passwords = []
+                first = True
+                while True:
+                    password = getpass.getpass('Enter password: ' if first
+                                    else 'Enter next password [done]: ')
+                    if first:
+                        first = False
+                    if not password:
+                        break
+                    passwords.append(password)
+            else:
+                passwords = [getpass.getpass('Enter password: ')]
         else:
             passwords = self.args.passwords
         with self._open_safe() as safe:

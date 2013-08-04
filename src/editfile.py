@@ -142,6 +142,14 @@ def quote_string(s):
         s = s.replace(old, new)
     return '"%s"' % s
 
+def escape_key(s):
+    if s.startswith('CONTAINER') or s.startswith('#'):
+        return quote_string(s)
+    return escape_key_or_secret(s)
+def escape_secret(s):
+    if s.startswith('#'):
+        return quote_string(s)
+    return escape_key_or_secret(s)
 def escape_key_or_secret(s):
     if any(c in s for c in (' ', '\t', '\n', '"')):
         return quote_string(s)
@@ -165,9 +173,9 @@ def dump(d):
         d2[container_id] = []
         for key, secret, note in entries:
             d2[container_id].append((
-                    escape_key_or_secret(key),
+                    escape_key(key),
                     '#'+str(secret) if isinstance(secret, int)
-                            else escape_key_or_secret(secret),
+                            else escape_secret(secret),
                     escape_note(note) if note else None))
     # Now, determine alignment
     max_key_len = max(max(len(key) for key, secret, note in entries)

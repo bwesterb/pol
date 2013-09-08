@@ -15,7 +15,7 @@ install_requires = [
     'PyYAML >=3',            #      ibidem
     'pyparsing >=1.5.6, <2.0.0', #   ibidem
     'zxcvbn >=1.0',
-    'seccure >=0.2',
+    'seccure >=0.2.3',
     'demandimport >=0.2.1',
         ]
 

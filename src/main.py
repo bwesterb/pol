@@ -32,6 +32,7 @@ import csv
 import re
 import os
 
+import pol.text
 import pol.safe
 import pol.passgen
 import pol.version
@@ -695,7 +696,8 @@ class Program(object):
                 for n, container_entry in enumerate(entries):
                     container, entry = container_entry
                     sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
-                            repr(entry.note) if entry.note else ''))
+                            pol.text.escape_cseqs(entry.note) if entry.note
+                            else ''))
                 sys.stderr.write('\n')
                 sys.stderr.write('Use `-n N\' to pick one.\n')
                 return -8
@@ -704,7 +706,8 @@ class Program(object):
                 sys.stderr.write('Entry number out of range.\n')
                 return -15
             entry = entries[n][1]
-            sys.stderr.write(' note: %s\n' % repr(entry.note))
+            sys.stderr.write(' note: %s\n' % pol.text.escape_cseqs(entry.note)
+                                                if entry.note else '')
             print entry.secret
 
     def cmd_remove(self):
@@ -737,7 +740,8 @@ class Program(object):
                 for n, container_entry in enumerate(entries):
                     container, entry = container_entry
                     sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
-                            repr(entry.note) if entry.note else ''))
+                            pol.text.escape_cseqs(entry.note) if entry.note
+                                    else ''))
                 sys.stderr.write('\n')
                 sys.stderr.write('Use `-n N\' to pick one.\n')
                 return -8
@@ -781,7 +785,8 @@ class Program(object):
                 for n, container_entry in enumerate(entries):
                     container, entry = container_entry
                     sys.stderr.write(' %2s. %-20s %s\n' % (n+1, entry.key,
-                            repr(entry.note) if entry.note else ''))
+                            pol.text.escape_cseqs(entry.note) if entry.note
+                                        else ''))
                 sys.stderr.write('\n')
                 sys.stderr.write('Use `-n N\' to pick one.\n')
                 return -8
@@ -790,7 +795,8 @@ class Program(object):
                 sys.stderr.write('Entry number out of range.\n')
                 return -15
             entry = entries[n][1]
-            print ' note: %s' % repr(entry.note)
+            print ' note: %s' % (pol.text.escape_cseqs(entry.note)
+                                    if entry.note else '')
             print 'Copied secret to clipboard.  Press any key to clear ...'
             pol.clipboard.copy(entry.secret)
             pol.terminal.wait_for_keypress()
@@ -1028,7 +1034,8 @@ class Program(object):
                         if regex and not regex.search(entry.key):
                             continue
                         got_entry = True
-                        print ' %-20s %s' % (entry.key, repr(entry.note)
+                        print ' %-20s %s' % (entry.key,
+                                    pol.text.escape_cseqs(entry.note)
                                                     if entry.note else '')
                     if not got_entry:
                         if regex:

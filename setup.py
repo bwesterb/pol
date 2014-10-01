@@ -8,7 +8,7 @@ install_requires = [
     'pycrypto >=2.6',        # TODO do we need this version
     'msgpack-python >=0.2',  #      ibidem
     'gmpy >=1.15, <2',       #      ibidem
-    'scrypt >=0.5.5, !=0.6.0 !=0.6.1',#      ibidem
+    'scrypt >=0.5.5, !=0.6.0, !=0.6.1',#      ibidem
     'yappi >=0.62',          #      ibidem
     'lockfile >=0.8',        #      ibidem
     'PyYAML >=3',            #      ibidem

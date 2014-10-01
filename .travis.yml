@@ -6,7 +6,7 @@ install:
  - "sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm"
  - "sudo apt-get install -qq libgmp-dev libmcrypt-dev"
  - "echo 'travis' > RELEASE-VERSION"
- - "pip install python-mcrypt --allow-external --allow-unverified"
+ - "pip install python-mcrypt --allow-external python-mcrypt --allow-unverified python-mcrypt"
  - "python setup.py install"
 script:
  - "python setup.py test"

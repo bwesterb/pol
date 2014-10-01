@@ -10,7 +10,6 @@ install_requires = [
     'gmpy >=1.15, <2',       #      ibidem
     'scrypt >=0.5.5, !=0.6.0',#      ibidem
     'yappi >=0.62',          #      ibidem
-    'python-mcrypt >=1.1',   #      ibidem
     'lockfile >=0.8',        #      ibidem
     'PyYAML >=3',            #      ibidem
     'pyparsing >=1.5.6, <2.0.0', #   ibidem
@@ -40,6 +39,9 @@ setup(
                     'editor/editfile.vim']},
     license='GPL 3.0',
     install_requires=install_requires,
+    extras_require = {
+        'psafe3-importer': ['python-mcrypt >=1.1']
+    },
     entry_points = {
         'console_scripts': [
                 'pol = pol.main:entrypoint',

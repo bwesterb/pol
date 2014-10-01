@@ -52,7 +52,7 @@ First, we install pol.
                             python-dev python-pip
     $ sudo pip install pol
 
-#### On Ubuntu 13.04
+#### On Ubuntu 13.04 and 14.04.1
 
     $ sudo apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
                         python-pip libssl-dev

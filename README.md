@@ -55,7 +55,7 @@ First, we install pol.
 #### On Ubuntu 13.04 and 14.04.1
 
     $ sudo apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
-                        python-pip libssl-dev
+                        python-pip libssl-dev libyaml-dev
     $ sudo pip install pol
 
 #### On Mac with MacPorts

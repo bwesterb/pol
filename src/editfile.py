@@ -2,7 +2,7 @@
 
 import re
 import cStringIO as StringIO
-from pyparsing import ParseException
+from pyparsing import ParseException, ParseBaseException
 
 # TODO add unittests
 
@@ -82,8 +82,8 @@ def create_grammar(container_ids, secret_ids):
     secret = secretString | secretId
     note = quotedString | originalTextFor(OneOrMore(word))
     containerKeyword = Suppress('CONTAINER')
-    entry = (~containerKeyword + Group(key + secret + Optional(note))
-                + Suppress(lineEnd))
+    entry = (~containerKeyword + Group(key - secret - Optional(note))
+                - Suppress(lineEnd))
     comment = Suppress(lineEnd | '#' + SkipTo(lineEnd))
     line = comment | entry
     containerLine = containerKeyword + containerId + comment
@@ -119,14 +119,7 @@ def create_grammar(container_ids, secret_ids):
             curEntries = []
         return ret
     multipleContainers.setParseAction(multipleContainersParseAction)
-    # Instead of the following recursive grammar, we could have simply used
-    #
-    #     oneContainer = ZeroOrMore(line) + stringEnd
-    #
-    # but then any parsing error in a line will result in a "expected stringEnd"
-    _oneContainer = Forward()
-    _oneContainer << (stringEnd | (line + _oneContainer))
-    oneContainer = And([_oneContainer]) # TODO is there a "Singleton"?
+    oneContainer = ZeroOrMore(line) + stringEnd
     oneContainer.setParseAction(lambda s,l,t: [[None, t]])
     grammar = multipleContainers | oneContainer
     return grammar

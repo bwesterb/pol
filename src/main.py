@@ -989,7 +989,7 @@ class Program(object):
                     parsed = pol.editfile.parse(edited, containers.keys(),
                                                     secrets.keys())
                     break
-                except pol.editfile.ParseException as e:
+                except pol.editfile.ParseBaseException as e:
                     to_edit = pol.editfile.insert_error(edited, e)
             # Now, apply changes.
             for container_id in parsed:

@@ -63,8 +63,6 @@ First, we install pol.
     $ brew install python gmp mcrypt
     $ pip install pol
 
-Note that homebrew python comes with pip :). And you don't need sudo :).
-
 #### On Mac with MacPorts
 
 Install [MacPorts](http://www.macports.org).  Then run

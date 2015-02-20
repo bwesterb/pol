@@ -58,6 +58,13 @@ First, we install pol.
                         python-pip libssl-dev libyaml-dev
     $ sudo pip install pol
 
+#### On Mac with homebrew
+
+    $ brew install python gmp mcrypt
+    $ pip install pol
+
+Note that homebrew python comes with pip :). And you don't need sudo :).
+
 #### On Mac with MacPorts
 
 Install [MacPorts](http://www.macports.org).  Then run

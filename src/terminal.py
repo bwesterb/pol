@@ -4,6 +4,7 @@ import contextlib
 import termios
 import logging
 import getpass
+import ctypes
 import select
 import string
 import fcntl
@@ -63,6 +64,7 @@ def wait_for_keypress():
     with raw_mode():
         purge_stdin()
         try:
+            PyOS_InputHook() # allows GTK to manage clipboard
             ret = sys.stdin.read(1)
         except KeyboardInterrupt:
             ret = 0
@@ -140,3 +142,14 @@ def zxcvbn_getpass(prompt, prefix='', allow_empty=True):
                 sys.stderr.write('\033[55G\033[Kignored key %r\033[%sG' % (
                                              c, prompt_offset + 1))
                 sys.stderr.flush()
+
+def PyOS_InputHook():
+    """ Runs PyOS_InputHook, if set.
+
+        Python runs this hook before fgets in raw_input.  Packages like
+        gtk set PyOS_InputHook to handle events while the python script
+        waits for input on stdin. """
+    addr = ctypes.c_void_p.in_dll(ctypes.pythonapi, 'PyOS_InputHook').value
+    if not addr:
+        return
+    ctypes.PYFUNCTYPE(ctypes.c_int)(addr)()

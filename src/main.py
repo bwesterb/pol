@@ -30,7 +30,6 @@ import time
 import math
 import csv
 import re
-import os
 
 import pol.text
 import pol.safe

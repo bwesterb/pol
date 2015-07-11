@@ -4,6 +4,7 @@ import time
 import struct
 import logging
 import os.path
+import weakref
 import binascii
 import contextlib
 import collections
@@ -618,7 +619,7 @@ class ElGamalSafe(Safe):
     def __init__(self, data, nworkers, use_threads):
         super(ElGamalSafe, self).__init__(data, nworkers, use_threads)
         # maps first index of mainslice and/or appendslice to
-        # an already opened Container.
+        # a wealref to an already opened Container.
         self._opened_containers = {}
         # Check if `data' makes sense.
         self.free_blocks = set([])
@@ -766,12 +767,13 @@ class ElGamalSafe(Safe):
             append_data = append_tuple(*pol.serialization.string_to_son(
                                     append_slice.value))
         # Check if this container has already been opened
+        container = None
         if access_data.index in self._opened_containers:
-            container = self._opened_containers[access_data.index]
-        elif (append_index is not None
+            container = self._opened_containers[access_data.index]()
+        if (not container and append_index is not None
                 and append_index in self._opened_containers):
-            container = self._opened_containers[append_index]
-        else:
+            container = self._opened_containers[append_index]()
+        if not container:
             container = ElGamalSafe.Container(self)
         # Initialize the container or combine the newly read data
         # with the data already in the open container.
@@ -780,9 +782,11 @@ class ElGamalSafe(Safe):
                     secret_data, move_append_entries, on_move_append_entries,
                     autosave)
         # Register the container as opened
-        self._opened_containers.setdefault(access_data.index, container)
+        self._opened_containers.setdefault(access_data.index,
+                        weakref.ref(container))
         if append_index is not None:
-            self._opened_containers.setdefault(append_index, container)
+            self._opened_containers.setdefault(append_index,
+                        weakref.ref(container))
         return container
 
     def new_container(self, password, list_password=None, append_password=None,
@@ -875,8 +879,9 @@ class ElGamalSafe(Safe):
         # Register the container as opened
         if append_password:
             self._opened_containers.setdefault(append_slice.first_index,
-                                                            container)
-        self._opened_containers.setdefault(main_slice.first_index, container)
+                                                weakref.ref(container))
+        self._opened_containers.setdefault(main_slice.first_index,
+                                                weakref.ref(container))
         # Save the container
         l.debug('new_container: saving')
         container.save(randfunc=randfunc, annex=True)
@@ -922,8 +927,9 @@ class ElGamalSafe(Safe):
         sl.trash()
 
     def autosave_containers(self):
-        for container in self._opened_containers.itervalues():
-            if container.autosave and container.unsaved_changes:
+        for container_ref in self._opened_containers.itervalues():
+            container = container_ref()
+            if container and container.autosave and container.unsaved_changes:
                 container.save()
 
     def rerandomize(self, nworkers=None, use_threads=False, progress=None):

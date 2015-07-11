@@ -16,6 +16,8 @@ install_requires = [
     'zxcvbn >=1.0',
     'seccure >=0.2.3',
     'demandimport >=0.2.1',
+    'urwid >=1.3.0',
+    'urwidtrees >=1.0',
         ]
 
 if sys.version_info < (2, 7):

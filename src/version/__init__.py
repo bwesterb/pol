@@ -26,7 +26,7 @@ def get_version():
         raw_git_version = line.strip()
         if '-' in raw_git_version:
             tag, count, sha  = raw_git_version.split('-', 2)
-            git_version = '{}.dev{}+{}'.format(tag, count, sha)
+            git_version = '{0}.dev{1}+{2}'.format(tag, count, sha)
         else:
             git_version = raw_git_version
     except OSError:

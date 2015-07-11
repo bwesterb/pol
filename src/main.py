@@ -31,6 +31,7 @@ import math
 import csv
 import re
 
+import pol.vi
 import pol.text
 import pol.safe
 import pol.passgen
@@ -406,6 +407,19 @@ class Program(object):
         p_shell_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
                     help='Compose passwords with the contents of these files')
         p_shell.set_defaults(func=self.cmd_shell)
+
+        # pol vi
+        p_vi = subparsers.add_parser('vi',
+                        add_help=False,
+                    help='Open curses UI of pol')
+        p_vi_b = p_vi.add_argument_group(
+                                    'basic options')
+        p_vi_b.add_argument('-h', '--help', action='help',
+                    help='show this help message and exit')
+        p_vi_a = p_vi.add_argument_group('advanced options')
+        p_vi_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
+                    help='Compose passwords with the contents of these files')
+        p_vi.set_defaults(func=self.cmd_vi)
 
         # pol speed
         p_speed = subparsers.add_parser('speed',
@@ -1222,6 +1236,9 @@ class Program(object):
             if self.args.func == self.cmd_shell:
                 continue
             self._run_command()
+
+    def cmd_vi(self):
+        pol.vi.main(self)
 
     def cmd_export(self):
         close_f = False

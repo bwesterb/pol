@@ -23,7 +23,12 @@ def get_version():
         if p.wait() != 0:
             raise OSError
         line = p.stdout.readlines()[0]
-        git_version = line.strip()
+        raw_git_version = line.strip()
+        if '-' in raw_git_version:
+            tag, count, sha  = raw_git_version.split('-', 2)
+            git_version = '{0}.dev{1}+{2}'.format(tag, count, sha)
+        else:
+            git_version = raw_git_version
     except OSError:
         pass
 

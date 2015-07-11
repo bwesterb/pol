@@ -1,12 +1,17 @@
+sudo: false
 language: python
+addons:
+ apt:
+  packages:
+   - libgmp-dev
+   - libmcrypt-dev
 python:
  - "2.6"
  - "2.7"
 install:
- - "sudo rm -rf /dev/shm && sudo ln -s /run/shm /dev/shm"
- - "sudo apt-get install -qq libgmp-dev libmcrypt-dev"
  - "echo 'travis' > RELEASE-VERSION"
  - "pip install python-mcrypt --allow-external python-mcrypt --allow-unverified python-mcrypt"
+ - "pip install scrypt"
  - "python setup.py install"
 script:
  - "python setup.py test"

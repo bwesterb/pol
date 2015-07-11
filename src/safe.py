@@ -404,6 +404,10 @@ class ElGamalSafe(Safe):
                     and self.append_data.entries):
                 self._move_append_entries(on_move_append_entries)
 
+        def __del__(self):
+            if self.autosave and self.unsaved_changes:
+                self.save()
+
         def _move_append_entries(self, on_move_append_entries):
             if not self.secret_data:
                 raise MissingKey

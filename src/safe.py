@@ -772,12 +772,14 @@ class ElGamalSafe(Safe):
                                     append_slice.value))
         # Check if this container has already been opened
         container = None
+        is_new_container = False
         if access_data.index in self._opened_containers:
             container = self._opened_containers[access_data.index]()
         if (not container and append_index is not None
                 and append_index in self._opened_containers):
             container = self._opened_containers[append_index]()
         if not container:
+            is_new_container = True
             container = ElGamalSafe.Container(self)
         # Initialize the container or combine the newly read data
         # with the data already in the open container.
@@ -785,12 +787,15 @@ class ElGamalSafe(Safe):
                     main_slice, append_slice, main_data, append_data,
                     secret_data, move_append_entries, on_move_append_entries,
                     autosave)
-        # Register the container as opened
-        self._opened_containers.setdefault(access_data.index,
-                        weakref.ref(container))
-        if append_index is not None:
-            self._opened_containers.setdefault(append_index,
-                        weakref.ref(container))
+        if is_new_container:
+            # Register the container as opened
+            assert (access_data.index not in self._opened_containers or
+                        self._opened_containers[access_data.index]() is None)
+            self._opened_containers[access_data.index] = weakref.ref(container)
+            if append_index is not None and access_data.index != append_index:
+                assert (append_index not in self._opened_containers or
+                            self._opened_containers[append_index]() is None)
+                self._opened_containers[append_index] = weakref.ref(container)
         return container
 
     def new_container(self, password, list_password=None, append_password=None,
@@ -881,11 +886,12 @@ class ElGamalSafe(Safe):
                         main_slice, append_slice, main_data, append_data,
                         secret_data, False, None, autosave)
         # Register the container as opened
+        ref = weakref.ref(container)
         if append_password:
-            self._opened_containers.setdefault(append_slice.first_index,
-                                                weakref.ref(container))
-        self._opened_containers.setdefault(main_slice.first_index,
-                                                weakref.ref(container))
+            assert append_slice.first_index not in self._opened_containers
+            self._opened_containers[append_slice.first_index] = ref
+        assert main_slice.first_index not in self._opened_containers
+        self._opened_containers[main_slice.first_index] = ref
         # Save the container
         l.debug('new_container: saving')
         container.save(randfunc=randfunc, annex=True)

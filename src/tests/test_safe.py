@@ -217,7 +217,18 @@ class TestElgamalSafe(unittest.TestCase):
         c2 = list(safe.open_containers('m'))[0]
         self.assertTrue(c2 is c)
         self.assertTrue(c.has_secrets)
+    def test_autosave(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+        c = list(safe.open_containers('a'))[0]
+        self._fill_container(c)
+        del(c)
+        self._assert_no_open_containers(safe)
 
+        c = list(safe.open_containers('m'))[0]
+        self._check_container(c)
+        self._check_container_secrets(c)
     def _assert_no_open_containers(self, safe):
         ok = True
         for ref in safe._opened_containers.itervalues():

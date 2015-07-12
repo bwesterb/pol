@@ -67,40 +67,58 @@ class TestElgamalSafe(unittest.TestCase):
     def test_open_containers(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+
         cs_m = list(safe.open_containers('m'))
-        cs_l = list(safe.open_containers('l'))
-        cs_a = list(safe.open_containers('a'))
         self.assertEqual(len(cs_m), 1)
-        self.assertEqual(len(cs_l), 1)
-        self.assertEqual(len(cs_a), 1)
         c_m = cs_m[0]
-        c_l = cs_l[0]
-        c_a = cs_a[0]
         self.assertTrue(c_m.can_add)
+        del(cs_m, c_m); self._assert_no_open_containers(safe)
+
+        cs_l = list(safe.open_containers('l'))
+        self.assertEqual(len(cs_l), 1)
+        c_l = cs_l[0]
         self.assertTrue(c_l.can_add)
+        del(cs_l, c_l); self._assert_no_open_containers(safe)
+
+        cs_a = list(safe.open_containers('a'))
+        self.assertEqual(len(cs_a), 1)
+        c_a = cs_a[0]
         self.assertTrue(c_a.can_add)
+        del(cs_a, c_a); self._assert_no_open_containers(safe)
     def test_additional_keys(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', 'a', nblocks=30,
                                 additional_keys=['b','a'])
+        self._assert_no_open_containers(safe)
+
         cs_m = list(safe.open_containers('m'))
-        cs_l = list(safe.open_containers('l'))
-        cs_a = list(safe.open_containers('a'))
         self.assertEqual(len(cs_m), 0)
-        self.assertEqual(len(cs_l), 0)
-        self.assertEqual(len(cs_a), 0)
+        del(cs_m); self._assert_no_open_containers(safe)
         cs_m = list(safe.open_containers('m', additional_keys=['a', 'b']))
-        cs_l = list(safe.open_containers('l', additional_keys=['a', 'b']))
-        cs_a = list(safe.open_containers('a', additional_keys=['a', 'b']))
         self.assertEqual(len(cs_m), 1)
-        self.assertEqual(len(cs_l), 1)
-        self.assertEqual(len(cs_a), 1)
         c_m = cs_m[0]
-        c_l = cs_l[0]
-        c_a = cs_a[0]
         self.assertTrue(c_m.can_add)
+        del(cs_m, c_m); self._assert_no_open_containers(safe)
+
+        cs_l = list(safe.open_containers('l'))
+        self.assertEqual(len(cs_l), 0)
+        del(cs_l); self._assert_no_open_containers(safe)
+        cs_l = list(safe.open_containers('l', additional_keys=['a', 'b']))
+        self.assertEqual(len(cs_l), 1)
+        c_l = cs_l[0]
         self.assertTrue(c_l.can_add)
+        del(cs_l, c_l); self._assert_no_open_containers(safe)
+
+        cs_a = list(safe.open_containers('a'))
+        self.assertEqual(len(cs_a), 0)
+        del(cs_a); self._assert_no_open_containers(safe)
+        cs_a = list(safe.open_containers('a', additional_keys=['a', 'b']))
+        self.assertEqual(len(cs_a), 1)
+        c_a = cs_a[0]
         self.assertTrue(c_a.can_add)
+        del(cs_a, c_a); self._assert_no_open_containers(safe)
+
         self.assertEqual(len(list(safe.open_containers('m',
                         additional_keys=['a', 'b', 'c']))), 0)
         self.assertEqual(len(list(safe.open_containers('o',
@@ -109,52 +127,115 @@ class TestElgamalSafe(unittest.TestCase):
     def test_main_data(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', None, nblocks=70)
+        self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m'))[0]
         self._fill_container(c)
         self._check_container(c)
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m'))[0]
         self._check_container(c)
         self._check_container_secrets(c)
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('l'))[0]
         self._check_container(c)
+        del(c); self._assert_no_open_containers(safe)
     def test_append_data(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('a'))[0]
         self._fill_container(c)
         self.assertRaises(pol.safe.MissingKey, self._check_container, c)
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m', move_append_entries=False))[0]
         self._check_container(c)
         self._check_container_secrets(c)
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('l', move_append_entries=False))[0]
         self.assertEqual(len(list(c.list())), 0)
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m'))[0]
         self._check_container(c)
         self._check_container_secrets(c)
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('l', move_append_entries=False))[0]
         self._check_container(c)
     def test_removal(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('a'))[0]
         self._fill_container(c)
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m', move_append_entries=False))[0]
         list(c.get('key1'))[0].remove()
         list(c.get('key2'))[0].remove()
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m'))[0]
         list(c.get('key3'))[0].remove()
         list(c.get('key4'))[0].remove()
         list(c.get('key4'))[0].remove()
         c.save()
+        del(c); self._assert_no_open_containers(safe)
+
         c = list(safe.open_containers('m'))[0]
         self.assertEqual(len(c.list()), 0)
+        del(c); self._assert_no_open_containers(safe)
+    def test_opening_containers_again(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
 
+        c = list(safe.open_containers('a'))[0]
+        c2 = list(safe.open_containers('a'))[0]
+        self.assertTrue(c is c2)
+        self.assertFalse(c.has_secrets)
+        self.assertRaises(pol.safe.MissingKey, c2.list)
+        del(c2)
+        c2 = list(safe.open_containers('l'))[0]
+        self.assertTrue(c2 is c)
+        self.assertEqual(c2.list(), [])
+        self.assertFalse(c.has_secrets)
+        del(c2)
+        c2 = list(safe.open_containers('m'))[0]
+        self.assertTrue(c2 is c)
+        self.assertTrue(c.has_secrets)
+    def test_autosave(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+        c = list(safe.open_containers('a'))[0]
+        self._fill_container(c)
+        del(c)
+        self._assert_no_open_containers(safe)
+
+        c = list(safe.open_containers('m'))[0]
+        self._check_container(c)
+        self._check_container_secrets(c)
+    def _assert_no_open_containers(self, safe):
+        ok = True
+        for ref in safe._opened_containers.itervalues():
+            if ref():
+                ok = False
+                break
+        self.assertTrue(ok)
     def _fill_container(self, c):
         c.add('key1', 'note1', 'secret1')
         c.add('key2', 'note2', 'secret2')

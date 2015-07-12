@@ -4,6 +4,7 @@ import time
 import struct
 import logging
 import os.path
+import weakref
 import binascii
 import contextlib
 import collections
@@ -174,7 +175,10 @@ class Safe(object):
         raise NotImplementedError
 
     def open_containers(self, password, additional_keys=[]):
-        """ Opens a container. """
+        """ Opens a container.
+
+            If a container is opened twice, the same object should
+            be returned. """
         raise NotImplementedError
 
     def rerandomize(self):
@@ -359,19 +363,68 @@ class ElGamalSafe(Safe):
             return True
 
     class Container(Container):
-        def __init__(self, safe, full_key, list_key, append_key, main_slice,
-                        append_slice, main_data, append_data, secret_data):
+        def __init__(self, safe):
             self.safe = safe
-            self.full_key = full_key
-            self.list_key = list_key
-            self.append_key = append_key
-            self.main_slice = main_slice
-            self.append_slice = append_slice
-            self.main_data = main_data
-            self.append_data = append_data
-            self.secret_data = secret_data
-            self.append_data_updates = {}
-            self.unsaved_changes = False
+            self.initialized = False
+        def _combine(self, full_key, list_key, append_key, main_slice,
+                        append_slice, main_data, append_data, secret_data,
+                         move_append_entries, on_move_append_entries,
+                         autosave):
+            """ Initialize the container or combine with possibly
+                more data.
+
+                The latter happens if the container is opened again or
+                with a different password that might have more access. """
+            # We are initializing
+            if not self.initialized:
+                self.unsaved_changes = False
+                self.initialized = True
+                self.full_key = full_key
+                self.list_key = list_key
+                self.append_key = append_key
+                self.main_slice = main_slice
+                self.append_slice = append_slice
+                self.main_data = main_data
+                self.append_data = append_data
+                self.secret_data = secret_data
+                self.append_data_updates = {}
+                self.autosave = autosave
+            else:
+                # We are combining
+                if list_key and not self.list_key:
+                    self.list_key = list_key
+                    self.main_slice = main_slice
+                    self.main_data = main_data
+                if full_key and not self.full_key:
+                    self.full_key = full_key
+                    self.secret_data = secret_data
+                if autosave:
+                    self.autosave = True
+            if (move_append_entries and self.secret_data
+                    and self.append_data.entries):
+                self._move_append_entries(on_move_append_entries)
+
+        def __del__(self):
+            if self.autosave and self.unsaved_changes:
+                self.save()
+
+        def _move_append_entries(self, on_move_append_entries):
+            if not self.secret_data:
+                raise MissingKey
+            if not self.append_data.entries:
+                return
+            new_entries = []
+            for raw_entry in self.append_data.entries:
+                new_entries.append(pol.serialization.string_to_son(
+                             self.safe.envelope.open(raw_entry,
+                                                self.secret_data.privkey)))
+            if on_move_append_entries:
+                on_move_append_entries(new_entries)
+            self.append_data = self.append_data._replace(entries=[])
+            for entry in new_entries:
+                self.secret_data.entries.append(entry[2])
+                self.main_data.entries.append(entry[:2])
+            self.touch()
 
         def save(self, randfunc=None, annex=False):
             if randfunc is None:
@@ -569,9 +622,11 @@ class ElGamalSafe(Safe):
 
     def __init__(self, data, nworkers, use_threads):
         super(ElGamalSafe, self).__init__(data, nworkers, use_threads)
+        # maps first index of mainslice and/or appendslice to
+        # a wealref to an already opened Container.
+        self._opened_containers = {}
         # Check if `data' makes sense.
         self.free_blocks = set([])
-        self.auto_save_containers = []
         for attr in ('group-params', 'n-blocks', 'blocks', 'block-index-size',
                             'slice-size'):
             if not attr in data:
@@ -675,14 +730,12 @@ class ElGamalSafe(Safe):
                             sl.first_index, access_data.type)
             container = self._open_container_with_access_data(
                             access_data, move_append_entries,
-                            on_move_append_entries)
-            if autosave:
-                self.auto_save_containers.append(container)
+                            on_move_append_entries, autosave)
             yield container
 
     def _open_container_with_access_data(self, access_data,
                         move_append_entries=True,
-                        on_move_append_entries=None):
+                        on_move_append_entries=None, autosave=True):
         (full_key, list_key, append_key, main_slice, append_slice, main_data,
                 append_data, secret_data, append_index, main_index) = (None,
                         None, None, None, None, None, None, None, None, None)
@@ -713,36 +766,46 @@ class ElGamalSafe(Safe):
             secret_data = secret_tuple(*pol.serialization.string_to_son(
                             cipherstream.decrypt(main_data.secrets)))
         # Read the append-data, if it exists
-        moved_entries = False
         if append_index is not None:
             append_slice = self._load_slice(append_key, append_index)
             append_data = append_tuple(*pol.serialization.string_to_son(
                                     append_slice.value))
-            # Move entries from append-data to the secret data
-            if append_data.entries and secret_data and move_append_entries:
-                new_entries = []
-                for raw_entry in append_data.entries:
-                    new_entries.append(pol.serialization.string_to_son(
-                                 self.envelope.open(raw_entry,
-                                                    secret_data.privkey)))
-                if new_entries:
-                    moved_entries = True
-                    if on_move_append_entries:
-                        on_move_append_entries(new_entries)
-                append_data = append_data._replace(entries=[])
-                for entry in new_entries:
-                    secret_data.entries.append(entry[2])
-                    main_data.entries.append(entry[:2])
-        container = ElGamalSafe.Container(self, full_key, list_key, append_key,
+        # Check if this container has already been opened
+        container = None
+        is_new_container = False
+        if access_data.index in self._opened_containers:
+            container = self._opened_containers[access_data.index]()
+        if (not container and append_index is not None
+                and append_index in self._opened_containers):
+            container = self._opened_containers[append_index]()
+        if not container:
+            is_new_container = True
+            container = ElGamalSafe.Container(self)
+        # Initialize the container or combine the newly read data
+        # with the data already in the open container.
+        container._combine(full_key, list_key, append_key,
                     main_slice, append_slice, main_data, append_data,
-                    secret_data)
-        if moved_entries:
-            container.touch()
+                    secret_data, move_append_entries, on_move_append_entries,
+                    autosave)
+        if is_new_container:
+            # Register the container as opened
+            assert (access_data.index not in self._opened_containers or
+                        self._opened_containers[access_data.index]() is None)
+            self._opened_containers[access_data.index] = weakref.ref(container)
+            if append_index is not None and access_data.index != append_index:
+                assert (append_index not in self._opened_containers or
+                            self._opened_containers[append_index]() is None)
+                self._opened_containers[append_index] = weakref.ref(container)
         return container
 
     def new_container(self, password, list_password=None, append_password=None,
-                            additional_keys=None, nblocks=170, randfunc=None):
-        """ Create a new container. """
+                            additional_keys=None, nblocks=170, randfunc=None,
+                            autosave=False):
+        """ Create a new container.
+
+        The new container is saved directly after creation.  The
+        `autosave' argument dictates whether the returned Container
+        object should be saved again when the Safe is closed.  """
         # TODO support access blocks of more than one block in size.
         # TODO check append_slice_size makes sense
         append_slice_size = 5
@@ -817,9 +880,19 @@ class ElGamalSafe(Safe):
                                secrets=None)
         secret_data = secret_tuple(privkey=privkey,
                                    entries=[])
-        container =  ElGamalSafe.Container(self, full_key, list_key, append_key,
+        # Create the Container object
+        container =  ElGamalSafe.Container(self)
+        container._combine(full_key, list_key, append_key,
                         main_slice, append_slice, main_data, append_data,
-                        secret_data)
+                        secret_data, False, None, autosave)
+        # Register the container as opened
+        ref = weakref.ref(container)
+        if append_password:
+            assert append_slice.first_index not in self._opened_containers
+            self._opened_containers[append_slice.first_index] = ref
+        assert main_slice.first_index not in self._opened_containers
+        self._opened_containers[main_slice.first_index] = ref
+        # Save the container
         l.debug('new_container: saving')
         container.save(randfunc=randfunc, annex=True)
         return container
@@ -864,10 +937,9 @@ class ElGamalSafe(Safe):
         sl.trash()
 
     def autosave_containers(self):
-        for container in self.auto_save_containers:
-            if not container:
-                continue
-            if container.unsaved_changes:
+        for container_ref in self._opened_containers.itervalues():
+            container = container_ref()
+            if container and container.autosave and container.unsaved_changes:
                 container.save()
 
     def rerandomize(self, nworkers=None, use_threads=False, progress=None):

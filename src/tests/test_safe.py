@@ -198,6 +198,25 @@ class TestElgamalSafe(unittest.TestCase):
         c = list(safe.open_containers('m'))[0]
         self.assertEqual(len(c.list()), 0)
         del(c); self._assert_no_open_containers(safe)
+    def test_opening_containers_again(self):
+        safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
+        safe.new_container('m', 'l', 'a', nblocks=70)
+        self._assert_no_open_containers(safe)
+
+        c = list(safe.open_containers('a'))[0]
+        c2 = list(safe.open_containers('a'))[0]
+        self.assertTrue(c is c2)
+        self.assertFalse(c.has_secrets)
+        self.assertRaises(pol.safe.MissingKey, c2.list)
+        del(c2)
+        c2 = list(safe.open_containers('l'))[0]
+        self.assertTrue(c2 is c)
+        self.assertEqual(c2.list(), [])
+        self.assertFalse(c.has_secrets)
+        del(c2)
+        c2 = list(safe.open_containers('m'))[0]
+        self.assertTrue(c2 is c)
+        self.assertTrue(c.has_secrets)
 
     def _assert_no_open_containers(self, safe):
         ok = True

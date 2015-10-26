@@ -33,6 +33,16 @@ def stretch_key(key, salt, niter):
         H = hashlib.sha256(H).digest()
     return H
 
+def unpack_ts(d):
+    if len(d) == 4:
+        return datetime.datetime.fromtimestamp(struct.unpack("<I", d)[0])
+    elif len(d) == 8:
+        return datetime.datetime.fromtimestamp(struct.unpack("<Q", d)[0])
+    else:
+        raise PSafe3FormatError("%s is an invalid length for a timestamp"
+                                        % len(d))
+
+
 def load(f, password):
     l.debug('Reading header ...')
     tag = f.read(4)
@@ -93,8 +103,7 @@ def load(f, password):
             elif t == 3:
                 header['tree-display-status'] = d
             elif t == 4:
-                header['last-save'] = datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0])
+                header['last-save'] = unpack_ts(d)
             elif t == 5:
                 header['last-save-who'] = d
             elif t == 6:
@@ -135,23 +144,15 @@ def load(f, password):
             elif t == 6:
                 record['password'] = d
             elif t == 7:
-                record['creation-time'] = datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0])
+                record['creation-time'] = unpack_ts(d)
             elif t == 8:
-                record['password-modification-time'] = (
-                        datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0]))
+                record['password-modification-time'] = unpack_ts(d)
             elif t == 9:
-                record['last-access-time'] = datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0])
+                record['last-access-time'] = unpack_ts(d)
             elif t == 10:
-                record['password-expiry-time'] = (
-                        datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0]))
+                record['password-expiry-time'] = unpack_ts(d)
             elif t == 12:
-                record['last-modification-time'] = (
-                        datetime.datetime.fromtimestamp(
-                                        struct.unpack("<I", d)[0]))
+                record['last-modification-time'] = unpack_ts(d)
             elif t == 13:
                 record['url'] = d
             elif t == 14:

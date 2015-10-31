@@ -474,6 +474,29 @@ class ElGamalSafe(Safe):
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
             self.unsaved_changes = False
 
+        def get_by_id(self, identifier):
+            kind, i = identifier
+            if kind == 'm':
+                return ElGamalSafe.MainEntry(self, i)
+            assert kind == 'a'
+            return ElGamalSafe.AppendEntry(self, i, 
+                                *self.safe.envelope.open(
+                                        self.append_data.entries[i],
+                                        self.secret_data.privkey))
+
+        def list_ids(self):
+            if not self.main_data:
+                return []
+            ret = []
+            for i, entry in enumerate(self.main_data.entries):
+                if entry is None:
+                    continue
+                ret.append(('m', i))
+            if self.append_data:
+                for i, raw_entry in enumerate(self.append_data.entries):
+                    ret.append(('a', i))
+            return ret
+
         def list(self):
             if not self.main_data:
                 raise MissingKey

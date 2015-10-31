@@ -17,6 +17,7 @@ if hasattr(sys, 'frozen'):
 elif 'POL_NO_DEMANDIMPORT' not in os.environ:
     demandimport.ignore('Crypto.PublicKey._fastmath')
     demandimport.ignore('functools') # urwidtrees/widgets.py
+    demandimport.ignore('urwid.command_map')
     demandimport.enable()
 
 import traceback

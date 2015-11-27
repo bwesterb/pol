@@ -1391,6 +1391,8 @@ def entrypoint(argv=None):
     ret = Program().main(argv, wait_pipe_fds[1])
     if ret is None:
         ret = 0
+    if 0 < ret:
+        ret = 256 - ret
     os.write(wait_pipe_fds[1], chr(ret))
     return ret
 

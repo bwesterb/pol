@@ -477,6 +477,7 @@ class Program(object):
         try:
             profiling = False
 
+            self.do_not_exit_when_closing_safe = False
             self.exitcode_pipe_fd = exitcode_pipe_fd 
 
             if 'POL_PROFILE' in os.environ:
@@ -1211,6 +1212,7 @@ class Program(object):
         #       ask for the password and rerandomize once.
         if not os.path.exists(self.safe_path):
             print "No safe found.  Type `init' to create a new safe."
+        self.do_not_exit_when_closing_safe = True
         while True:
             try:
                 line = raw_input('pol> ').strip()
@@ -1277,7 +1279,8 @@ class Program(object):
                            use_threads=self.args.threads,
                            progress=Program._RerandProgress()) as safe:
             yield safe
-            self._go_into_background()
+            if not self.do_not_exit_when_closing_safe:
+                self._go_into_background()
 
     def _go_into_background(self):
         """ Tells the parent-process (if any) to exit.  This will return

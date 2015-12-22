@@ -28,6 +28,7 @@ setup(
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',
     url='https://getpol.org',
+    zip_safe=False,
     packages=['pol',
               'pol.tests',
               'pol.version',

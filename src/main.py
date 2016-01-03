@@ -15,6 +15,7 @@ import demandimport
 if hasattr(sys, 'frozen'):
     import multiprocessing
 elif 'POL_NO_DEMANDIMPORT' not in os.environ:
+    demandimport.ignore('collections.OrderedDict') # enum34
     demandimport.ignore('Crypto.PublicKey._fastmath')
     demandimport.enable()
 

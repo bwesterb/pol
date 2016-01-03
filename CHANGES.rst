@@ -1,8 +1,8 @@
 pol Changelog
 =============
 
-0.3.7 (unreleased)
-------------------
+0.3.7.1 (2016-01-03)
+--------------------
 
  - Add new key-stretcher ``argon2``.
 

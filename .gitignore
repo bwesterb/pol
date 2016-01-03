@@ -6,6 +6,5 @@
 /build
 /dist
 /MANIFEST
-/src/version/RELEASE-VERSION
 /pyinstaller/build
 /pyinstaller/dist

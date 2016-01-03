@@ -1,1 +1,3 @@
-include src/version/RELEASE-VERSION
+include README.rst
+include CHANGES.rst
+include LICENSE

@@ -33,10 +33,10 @@ import math
 import csv
 import re
 
+import pol
 import pol.text
 import pol.safe
 import pol.passgen
-import pol.version
 import pol.terminal
 import pol.humanize
 import pol.clipboard
@@ -1362,7 +1362,7 @@ class Program(object):
 
     class _VersionAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_stirng):
-            print pol.version.get_version()
+            print pol.__version__
             sys.exit()
 
 

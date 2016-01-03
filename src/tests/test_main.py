@@ -1,3 +1,4 @@
+import os
 import unittest
 import tempfile
 
@@ -5,6 +6,7 @@ import pol.main
 
 class TestMain(unittest.TestCase):
     def setUp(self):
+        os.environ['POL_NO_FORK'] = 'please'
         self.safe = tempfile.NamedTemporaryFile()
         self.config = tempfile.NamedTemporaryFile()
 

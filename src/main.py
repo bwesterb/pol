@@ -18,12 +18,14 @@ elif 'POL_NO_DEMANDIMPORT' not in os.environ:
     demandimport.ignore('Crypto.PublicKey._fastmath')
     demandimport.enable()
 
+import contextlib
 import traceback
 import readline
 import argparse
 import logging
 import os.path
 import getpass
+import atexit
 import pprint
 import shlex
 import time
@@ -31,10 +33,10 @@ import math
 import csv
 import re
 
+import pol
 import pol.text
 import pol.safe
 import pol.passgen
-import pol.version
 import pol.terminal
 import pol.humanize
 import pol.clipboard
@@ -466,10 +468,17 @@ class Program(object):
         with open(cached_path, 'w') as f:
             msgpack.dump(self.config, f)
 
-    def main(self, argv):
-        """ Main entry point. """
+    def main(self, argv, exitcode_pipe_fd):
+        """ Main entry point.
+
+                argv:               command-line arguments to parse
+                exitcode_pipe_fd    fd of pipe to signal parent-process
+                                    to exit. """
         try:
             profiling = False
+
+            self.do_not_exit_when_closing_safe = False
+            self.exitcode_pipe_fd = exitcode_pipe_fd 
 
             if 'POL_PROFILE' in os.environ:
                 profiling = True
@@ -1203,6 +1212,7 @@ class Program(object):
         #       ask for the password and rerandomize once.
         if not os.path.exists(self.safe_path):
             print "No safe found.  Type `init' to create a new safe."
+        self.do_not_exit_when_closing_safe = True
         while True:
             try:
                 line = raw_input('pol> ').strip()
@@ -1262,11 +1272,24 @@ class Program(object):
             into the container. """
         sys.stderr.write("  moved entries into container: %s\n" % (
                 pol.humanize.join([entry[0] for entry in entries])))
+    @contextlib.contextmanager
     def _open_safe(self):
-        return pol.safe.open(os.path.expanduser(self.safe_path),
+        with pol.safe.open(os.path.expanduser(self.safe_path),
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
-                           progress=Program._RerandProgress())
+                           progress=Program._RerandProgress()) as safe:
+            yield safe
+            if not self.do_not_exit_when_closing_safe:
+                self._go_into_background()
+
+    def _go_into_background(self):
+        """ Tells the parent-process (if any) to exit.  This will return
+            the user to the command-line, while we can finish up by
+            e.g. rerandomizing. """
+        if self.exitcode_pipe_fd:
+            os.write(self.exitcode_pipe_fd, chr(0))
+            self.exitcode_pipe_fd = None
+
     def _run_command(self):
         try:
             return self.args.func()
@@ -1339,14 +1362,42 @@ class Program(object):
 
     class _VersionAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_stirng):
-            print pol.version.get_version()
+            print pol.__version__
             sys.exit()
 
 
 def entrypoint(argv=None):
+    """ Main entry-point of pol. """
     if argv is None:
         argv = sys.argv[1:]
-    return Program().main(argv)
+    if 'POL_NO_FORK' in os.environ:
+        return Program().main(argv, None)
+    # We will create a child process in which we will run pol.  This process,
+    # the parent process, will wait on the child process to tell it when
+    # to exit.  In this way a command like `pol list' will return to the
+    # commandline while rerandomization continues in the background child
+    # process.
+    # Note that it is important to fork early: not all modules we use
+    # are fork-safe.  For instance, any filelock will try to unlock itself
+    # twice.
+    wait_pipe_fds = os.pipe()
+    if os.fork():
+        # This is inside of the parent-process.  Wait on the child's signal.
+        exit_code = ord(os.read(wait_pipe_fds[0], 1))
+        return exit_code
+    # This is inside the child-process.
+    # Just in case the Program().main() does not return, we write
+    # to the pipe at exit.  It does not hurt that there are several writes.
+    @atexit.register
+    def quit_parent_at_exit_of_child():
+        os.write(wait_pipe_fds[1], '\0')
+    ret = Program().main(argv, wait_pipe_fds[1])
+    if ret is None:
+        ret = 0
+    if ret < 0:
+        ret = 256 + ret
+    os.write(wait_pipe_fds[1], chr(ret))
+    return ret
 
 if __name__ == '__main__':
     sys.exit(entrypoint())

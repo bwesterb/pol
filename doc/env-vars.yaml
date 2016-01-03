@@ -2,3 +2,9 @@
 POL_PROFILE:                    If set, enables profiling
 POL_NO_DEMANDIMPORT:            If set, disables lazy module loading
 POL_EDITOR:                     The external editor pol should use
+POL_NO_FORK: >
+    pol forks itself and continues in a child process, while the parent
+    waits on the child signal to exit.  In this way, the parent can exit
+    before rerandomization to return the user to her shell, while the
+    child finishes up the rerandomization.
+    If POL_NO_FORK is set, forking is disabled.

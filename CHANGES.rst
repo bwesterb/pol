@@ -1,7 +1,7 @@
 pol Changelog
 =============
 
-0.3.6 (unreleased)
+0.3.6 (2016-01-03)
 ------------------
 
  - Rerandomize in background to return shell earlier.

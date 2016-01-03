@@ -90,13 +90,6 @@ your ``PATH``. For instance, like this:
 
     $ echo 'export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH' >> ~/.profile
 
-Compiled binaries for Mac
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You can find compiled binaries, created using pyinstaller, for OS X
-`here <http://westerbaan.name/~bas/pol/pol-latest.zip>`__. Extract the
-zip somewhere, say ``/opt/pol``, and add the directory to your ``PATH``.
-
 Creating a safe
 ~~~~~~~~~~~~~~~
 

@@ -48,26 +48,26 @@ First, we install pol.
 
 #### On Debian Wheezy
 
-    $ sudo apt-get install libgmp3-dev libmcrypt-dev build-essential \
+    $ sudo apt-get install libgmp3-dev build-essential \
                             python-dev python-pip
     $ sudo pip install pol
 
 #### On Ubuntu 13.04 and 14.04.1
 
-    $ sudo apt-get install libgmp-dev libmcrypt-dev build-essential python-dev \
+    $ sudo apt-get install libgmp-dev build-essential python-dev \
                         python-pip libssl-dev libyaml-dev libssl-dev
     $ sudo pip install pol
 
 #### On Mac with homebrew
 
-    $ brew install python gmp mcrypt
+    $ brew install python gmp
     $ pip install pol
 
 #### On Mac with MacPorts
 
 Install [MacPorts](http://www.macports.org).  Then run
 
-    $ sudo port install gmp mcrypt py-pip py27-mcrypt py27-crypto
+    $ sudo port install gmp py-pip py27-crypto
     $ sudo pip-2.7 install pol
 
 If you get `pol: command not found` when you try to run `pol`,

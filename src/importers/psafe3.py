@@ -8,12 +8,15 @@ import logging
 import datetime
 import cStringIO as StringIO
 
-import mcrypt
+import twofish
 
 l = logging.getLogger(__name__)
 
 TAG = 'PWS3'
 EOF = 'PWS3-EOFPWS3-EOF'
+
+def sxor(s1, s2):
+    return ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(s1, s2))
 
 class BadPasswordError(ValueError):
     pass
@@ -58,23 +61,23 @@ def load(f, password):
         raise BadPasswordError
 
     l.debug('Reading header ...')
-    m = mcrypt.MCRYPT('twofish', 'ecb')
-    m.init(P2)
-    K = m.decrypt(f.read(32))
-    L = m.decrypt(f.read(32))
+    m = twofish.Twofish(P2)
+    K = m.decrypt(f.read(16)) + m.decrypt(f.read(16))
+    L = m.decrypt(f.read(16)) + m.decrypt(f.read(16))
     IV = f.read(16)
 
-    m = mcrypt.MCRYPT('twofish', 'cbc')
-    m.init(K, IV)
+    m = twofish.Twofish(K)
+    prev_ct = IV
 
     l.debug('Decrypting ...')
     plaintext = ''
     hmac_data = ''
     while True:
-        b = f.read(16)
-        if b == EOF:
+        ct = f.read(16)
+        if ct == EOF:
             break
-        plaintext += m.decrypt(b)
+        plaintext += sxor(m.decrypt(ct), prev_ct)
+        prev_ct = ct
 
     l.debug('Reading decrypted header ...')
     g = StringIO.StringIO(plaintext)

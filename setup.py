@@ -41,7 +41,7 @@ setup(
     license='GPL 3.0',
     install_requires=install_requires,
     extras_require = {
-        'psafe3-importer': ['python-mcrypt >=1.1']
+        'psafe3-importer': ['twofish']
     },
     entry_points = {
         'console_scripts': [

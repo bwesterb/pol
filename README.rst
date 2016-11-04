@@ -79,8 +79,10 @@ Install `MacPorts`_. Then run
 
 ::
 
-    $ sudo port install gmp py-pip py27-crypto
-    $ sudo pip-2.7 install pol
+    $ sudo bash
+    # port install gmp py-pip py27-crypto
+    # CFLAGS=-I/opt/local/include pip-2.7 install scrypt --no-use-wheel
+    # pip-2.7 install pol
 
 If you get ``pol: command not found`` when you try to run ``pol``, add
 ``/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin`` to

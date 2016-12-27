@@ -83,7 +83,9 @@ class Argon2KeyStretching(KeyStretching):
 
     def __init__(self, params):
         super(Argon2KeyStretching, self).__init__(params)
-        for attr in ('t', 'm', 'p'):
+        if not 'v' in params:
+            params['v'] = 0x10
+        for attr in ('t', 'm', 'p', 'v'):
             if not attr in params:
                 raise KeyStretchingParameterError("Missing param `%s'" % attr)
             if not isinstance(params[attr], int):
@@ -101,6 +103,7 @@ class Argon2KeyStretching(KeyStretching):
                             memory_cost=self.params['m'],
                             parallelism=self.params['p'],
                             hash_len=64,
+                            version=self.params['v'],
                             type=argon2.low_level.Type.D)
 
     @staticmethod
@@ -111,6 +114,7 @@ class Argon2KeyStretching(KeyStretching):
             params = {'type': 'argon2',
                       'salt': randfunc(32),
                       't': 1,
+                      'v': argon2.low_level.ARGON2_VERSION,
                       'm': 102400,
                       'p': 4}
         return KeyStretching.setup(params)

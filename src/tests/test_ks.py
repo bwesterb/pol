@@ -34,7 +34,7 @@ class TestArgon2(unittest.TestCase):
         self.ks2 = pol.ks.KeyStretching.setup(self.ks.params)
         self.assertEqual(self.ks2.params['salt'], self.ks.params['salt'])
         self.assertEqual(self.ks2('abc'), self.ks('abc'))
-    def test_value(self):
+    def test_value_v10(self):
         ks = pol.ks.KeyStretching.setup({
             'type': 'argon2', 't': 1, 'm':8, 'p':1, 'salt': 'waasdasdaa'})
         self.assertEqual(binascii.hexlify(
@@ -42,6 +42,15 @@ class TestArgon2(unittest.TestCase):
                             '16a0a8427be8fe5a1ecce6b03ef9607a1d4064168e1'+
                             '94af4c13652af8a1728f8c4acc59d0cabe7159104de'+
                             '737165f6c646d912307bbfa9db11adab00bdaabf4b')
+    def test_value_v13(self):
+        ks = pol.ks.KeyStretching.setup({
+            'type': 'argon2', 't': 1, 'm':8, 'p':1, 'salt': 'waasdasdaa',
+            'v':0x13})
+        self.assertEqual(binascii.hexlify(
+                ks.stretch('waasdasdada')),
+                   ('96f5ba079ff69cb9a0eecc16399a2d12fab4d7b7fd1591c1b5b14d59c9'
+                    '498a7f9598c6912d970ca7db619177cc22be83996bdf5a480a346c33c8'
+                    '857e7578fc61'))
 
 if __name__ == '__main__':
     unittest.main()

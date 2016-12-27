@@ -4,7 +4,7 @@ pol Changelog
 0.3.8 (unreleased)
 ------------------
 
-- Nothing changed yet.
+ - Work-around argon2cffi switching from Argon2 v1.0 to v1.3.
 
 
 0.3.7.1 (2016-01-03)

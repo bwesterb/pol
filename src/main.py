@@ -133,8 +133,6 @@ class Program(object):
                     help='Number of blocks in the safe')
         p_init_a.add_argument('-K', '--keyfiles', nargs='*', metavar='PATH',
                     help='Compose passwords with the contents of these files')
-        p_init_a.add_argument('--argon2', action='store_true',
-                    help='Use argon2d instead of scrypt')
         p_init.set_defaults(func=self.cmd_init)
 
         # pol list
@@ -634,7 +632,6 @@ class Program(object):
                 progressbar(x)
             elif step == 'g':
                 progressbar.end()
-        ks = pol.ks.Argon2KeyStretching.setup() if self.args.argon2 else None
         try:
             blocks_per_container = int(math.floor(self.args.blocks / 6.0))
             with pol.safe.create(os.path.expanduser(self.safe_path),
@@ -644,8 +641,7 @@ class Program(object):
                                  progress=progress,
                                  precomputed_gp=self.args.precomputed_gp,
                                  use_threads=self.args.threads,
-                                 n_blocks=self.args.blocks,
-                                 ks=ks) as safe:
+                                 n_blocks=self.args.blocks) as safe:
                 for i, mlapw in enumerate(pws):
                     mpw, lpw, apw = mlapw
                     print '  allocating container #%s ...' % (i+1)

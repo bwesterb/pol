@@ -34,11 +34,12 @@ class KeyStretching(object):
         if params is None:
             if randfunc is None:
                 randfunc = Crypto.Random.new().read
-            params = {'type': 'scrypt',
+            params = {'type': 'argon2',
                       'salt': randfunc(32),
-                      #'r': 8,
-                      #'p': 1,
-                      'Nexp': 15}
+                      't': 1,
+                      'v': argon2.low_level.ARGON2_VERSION,
+                      'm': 102400,
+                      'p': 4}
         if ('type' not in params or not isinstance(params['type'], basestring)
                 or params['type'] not in TYPE_MAP):
             raise KeyStretchingParameterError("Invalid `type' attribute")
@@ -49,6 +50,7 @@ class KeyStretching(object):
 
     def stretch(self, password):
         raise NotImplementedError
+
 
 class ScryptKeyStretching(KeyStretching):
     """ scrypt is the default for key stretching """
@@ -76,6 +78,18 @@ class ScryptKeyStretching(KeyStretching):
                            #r=self.params['r'],
                            #p=self.params['p'],
                            N=2**self.params['Nexp'])
+
+    @staticmethod
+    def setup(params=None, randfunc=None):
+        if params is None:
+            if randfunc is None:
+                randfunc = Crypto.Random.new().read
+            params = {'type': 'scrypt',
+                      'salt': randfunc(32),
+                      #'r': 8,
+                      #'p': 1,
+                      'Nexp': 15}
+        return KeyStretching.setup(params)
 
 class Argon2KeyStretching(KeyStretching):
     """ argon2 is the winner of the recent Password Hashing Competition.
@@ -105,19 +119,6 @@ class Argon2KeyStretching(KeyStretching):
                             hash_len=64,
                             version=self.params['v'],
                             type=argon2.low_level.Type.D)
-
-    @staticmethod
-    def setup(params=None, randfunc=None):
-        if params is None:
-            if randfunc is None:
-                randfunc = Crypto.Random.new().read
-            params = {'type': 'argon2',
-                      'salt': randfunc(32),
-                      't': 1,
-                      'v': argon2.low_level.ARGON2_VERSION,
-                      'm': 102400,
-                      'p': 4}
-        return KeyStretching.setup(params)
 
 TYPE_MAP = {'scrypt': ScryptKeyStretching,
             'argon2': Argon2KeyStretching}

@@ -8,6 +8,7 @@ pol Changelog
  - Do not show progressbar after returning the shell to the user.
  - Atomic save: you will not loose your safe anymore if something goes
    wrong while writing the safe to disk (assuming os.rename is atomic).
+ - Use Argon2d as the default key-stretcher.
 
 
 0.3.7.1 (2016-01-03)

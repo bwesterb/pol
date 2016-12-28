@@ -6,6 +6,8 @@ pol Changelog
 
  - Work-around argon2cffi switching from Argon2 v1.0 to v1.3.
  - Do not show progressbar after returning the shell to the user.
+ - Atomic save: you will not loose your safe anymore if something goes
+   wrong while writing the safe to disk (assuming os.rename is atomic).
 
 
 0.3.7.1 (2016-01-03)

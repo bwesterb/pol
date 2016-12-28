@@ -483,6 +483,7 @@ class Program(object):
 
             self.do_not_exit_when_closing_safe = False
             self.exitcode_pipe_fd = exitcode_pipe_fd 
+            self.in_background = False
 
             if 'POL_PROFILE' in os.environ:
                 profiling = True
@@ -1283,7 +1284,7 @@ class Program(object):
         with pol.safe.open(os.path.expanduser(self.safe_path),
                            nworkers=self.args.workers,
                            use_threads=self.args.threads,
-                           progress=Program._RerandProgress()) as safe:
+                           progress=Program._RerandProgress(self)) as safe:
             yield safe
             if not self.do_not_exit_when_closing_safe:
                 self._go_into_background()
@@ -1292,7 +1293,8 @@ class Program(object):
         """ Tells the parent-process (if any) to exit.  This will return
             the user to the command-line, while we can finish up by
             e.g. rerandomizing. """
-        if self.exitcode_pipe_fd:
+        if not self.in_background and self.exitcode_pipe_fd:
+            self.in_background = True
             os.write(self.exitcode_pipe_fd, chr(0))
             self.exitcode_pipe_fd = None
 
@@ -1350,11 +1352,14 @@ class Program(object):
 
     class _RerandProgress():
         """ Glue between callbacks of rerandomize and the progressbar. """
-        def __init__(self):
+        def __init__(self, program):
+            self.program = program
             self.progressbar = pol.progressbar.ProgressBar()
             self.started = False
             self.starting_time = None
         def __call__(self, v):
+            if self.program.in_background:
+                return
             if self.starting_time is None:
                 self.starting_time = time.time()
             if not self.started and time.time() - self.starting_time > 1.0:

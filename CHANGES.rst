@@ -5,6 +5,7 @@ pol Changelog
 ------------------
 
  - Work-around argon2cffi switching from Argon2 v1.0 to v1.3.
+ - Do not show progressbar after returning the shell to the user.
 
 
 0.3.7.1 (2016-01-03)

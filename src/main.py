@@ -881,7 +881,7 @@ class Program(object):
                 return
             if not pol.clipboard.available:
                 sys.stderr.write('Clipboard access not available.\n')
-                sys.stderr.write('Use --stdout to write to print password instead.\n')
+                sys.stderr.write('Use --stdout to print password instead.\n')
                 return -7
             pol.clipboard.copy(pw)
             sys.stderr.write('Copied password to clipboard.  '+

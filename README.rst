@@ -81,7 +81,6 @@ Install `MacPorts`_. Then run
 
     $ sudo bash
     # port install gmp py-pip py27-crypto
-    # CFLAGS=-I/opt/local/include pip-2.7 install scrypt --no-use-wheel
     # pip-2.7 install pol
 
 If you get ``pol: command not found`` when you try to run ``pol``, add
@@ -307,7 +306,7 @@ Technical background
 --------------------
 
 For those who like context-free mumbo-jumbo: pol uses *El Gamal
-rerandomization*, *scrypt*, *AES-256 CTR*, *ECIES* on *secp160r1*,
+rerandomization*, *Argon2d*, *AES-256 CTR*, *ECIES* on *secp160r1*,
 *SHA-256*, *Fortuna* and *msgpack*. For actual details, see
 `FORMAT.md`_
 

@@ -12,7 +12,6 @@ install_requires = [
     'pycrypto >=2.6',        # TODO do we need this version
     'msgpack-python >=0.2',  #      ibidem
     'gmpy >=1.15, <2',       #      ibidem
-    'scrypt >=0.5.5, !=0.6.0, !=0.6.1',#      ibidem
     'yappi >=0.62',          #      ibidem
     'lockfile >=0.8',        #      ibidem
     'PyYAML >=3',            #      ibidem
@@ -20,6 +19,7 @@ install_requires = [
     'zxcvbn >=1.0',
     'seccure >=0.2.3',
     'demandimport >=0.2.1',
+    'argon2-cffi >=16.1.0',
         ]
 
 if sys.version_info < (2, 7):
@@ -51,7 +51,8 @@ setup(
     license='GPL 3.0',
     install_requires=install_requires,
     extras_require = {
-        'psafe3-importer': ['twofish']
+        'psafe3-importer': ['twofish'],
+        'scrypt': ['scrypt >=0.5.5, !=0.6.0, !=0.6.1'],
     },
     entry_points = {
         'console_scripts': [
@@ -62,6 +63,8 @@ setup(
             'Development Status :: 4 - Beta',
             'Environment :: Console',
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
+            'Programming Language :: Python :: 2.6',
+            'Programming Language :: Python :: 2.7',
             'Operating System :: POSIX',
             'Topic :: Security',
         ],

@@ -79,8 +79,9 @@ Install `MacPorts`_. Then run
 
 ::
 
-    $ sudo port install gmp py-pip py27-crypto
-    $ sudo pip-2.7 install pol
+    $ sudo bash
+    # port install gmp py-pip py27-crypto
+    # pip-2.7 install pol
 
 If you get ``pol: command not found`` when you try to run ``pol``, add
 ``/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin`` to
@@ -89,13 +90,6 @@ your ``PATH``. For instance, like this:
 ::
 
     $ echo 'export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH' >> ~/.profile
-
-Compiled binaries for Mac
-^^^^^^^^^^^^^^^^^^^^^^^^^
-
-You can find compiled binaries, created using pyinstaller, for OS X
-`here <http://westerbaan.name/~bas/pol/pol-latest.zip>`__. Extract the
-zip somewhere, say ``/opt/pol``, and add the directory to your ``PATH``.
 
 Creating a safe
 ~~~~~~~~~~~~~~~
@@ -312,7 +306,7 @@ Technical background
 --------------------
 
 For those who like context-free mumbo-jumbo: pol uses *El Gamal
-rerandomization*, *scrypt*, *AES-256 CTR*, *ECIES* on *secp160r1*,
+rerandomization*, *Argon2d*, *AES-256 CTR*, *ECIES* on *secp160r1*,
 *SHA-256*, *Fortuna* and *msgpack*. For actual details, see
 `FORMAT.md`_
 

@@ -70,7 +70,7 @@ top-level `block-cipher` attribute.  The `block-cipher` is a so-called
   1. `block-cipher`.  The symmetric cryptography used.  The default is
      AES-256 in CTR.  See below for details.
   2. `key-stretching`.  The method to derive a key from a password.
-     The default is scrypt.  Again: see below for details.
+     The default is argon2d.  Again: see below for details.
   3. `key-derivation`.  Used to derive keys from list of strings.
      The default is based on SHA-256.
   4. `envelope`.  Used to seal messages with public/private key
@@ -195,23 +195,31 @@ See [blockcipher.py](../src/blockcipher.py).
 
 ### Key-stretching
 
-The default (and the only supported type) is
-[scrypt](http://www.tarsnap.com/scrypt.html).
+The default is [argon2d](https://password-hashing.net).  The key-stretcher
+[scrypt](http://www.tarsnap.com/scrypt.html) is also supported.
 The default configuration is:
 
-    {'type': 'scrypt',
-     'Nexp': 15,
+    {'type': 'argon2',
+     'p': 4,
+     'm': 102400,
+     't': 1,
+     'v': 19,
      'salt': < a randomly generated 32 byte string > }
 
- * **Nexp** is the 2-log of the value *N* passed to scrypt.
- * **salt** is the salt passed to scrypt.
+ * **p** is the `parallelism` parameter.
+ * **m** is the `memory_cost` parameter.
+ * **t** is the `time_cost` parameter.
+ * **v** is the version of argon2d to use (19 == 0x13 ~ argon2 v1.3)
+ * **salt** is the salt passed to argon2.
+
+See [argon2-cffi's choosing parameters](http://argon2-cffi.readthedocs.io/en/latest/parameters.html).
 
 #### Example
 
 The password `waasdasdada` stretched with the default configuration
 and salt `waasdasdaa`, gives the following key in hexadecimal notation:
 
-    69e9b3dafbc7cbe8d903fb1e6e1633da6c45fcd3f6edf66d34532a2883a7abd9390bbc834020a0539d8304570ee7b9eb64ab00ecad1bbd89e1a93c2c38646581
+    96f5ba079ff69cb9a0eecc16399a2d12fab4d7b7fd1591c1b5b14d59c9498a7f9598c6912d970ca7db619177cc22be83996bdf5a480a346c33c8857e7578fc61
 
 See [ks.py](../src/ks.py).
 

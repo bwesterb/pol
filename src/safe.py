@@ -1,11 +1,13 @@
 """ Implementation of pol safes.  See `Safe`. """
 
+import os
 import time
 import struct
 import logging
 import os.path
 import weakref
 import binascii
+import tempfile
 import contextlib
 import collections
 import multiprocessing
@@ -96,18 +98,18 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False,
         locked = True
         if not os.path.exists(path):
             raise SafeNotFoundError
-        with _builtin_open(path, 'r' if readonly else 'r+') as f:
+        with _builtin_open(path) as f:
             safe = Safe.load_from_stream(f, nworkers, use_threads)
-            yield safe
-            if not readonly:
-                safe.autosave_containers()
-                if safe.touched or always_rerandomize:
-                    safe.rerandomize(progress=progress,
-                                     nworkers=nworkers,
-                                     use_threads=use_threads)
-                    f.seek(0, 0)
-                    f.truncate()
+        yield safe
+        if not readonly:
+            safe.autosave_containers()
+            if safe.touched or always_rerandomize:
+                safe.rerandomize(progress=progress,
+                                 nworkers=nworkers,
+                                 use_threads=use_threads)
+                with tempfile.NamedTemporaryFile(delete=False) as f:
                     safe.store_to_stream(f)
+                    os.rename(f.name, path)
     except lockfile.AlreadyLocked:
         raise SafeLocked
     finally:

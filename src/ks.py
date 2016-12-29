@@ -3,7 +3,10 @@
 import logging
 
 import Crypto.Random
+
 import scrypt
+
+import argon2 # argon2-cffi
 
 # FIXME There is a bug in scrypt 0.5.5 that causes a crash when we
 #       try to specify r or p.
@@ -31,11 +34,12 @@ class KeyStretching(object):
         if params is None:
             if randfunc is None:
                 randfunc = Crypto.Random.new().read
-            params = {'type': 'scrypt',
+            params = {'type': 'argon2',
                       'salt': randfunc(32),
-                      #'r': 8,
-                      #'p': 1,
-                      'Nexp': 15}
+                      't': 1,
+                      'v': argon2.low_level.ARGON2_VERSION,
+                      'm': 102400,
+                      'p': 4}
         if ('type' not in params or not isinstance(params['type'], basestring)
                 or params['type'] not in TYPE_MAP):
             raise KeyStretchingParameterError("Invalid `type' attribute")
@@ -46,6 +50,7 @@ class KeyStretching(object):
 
     def stretch(self, password):
         raise NotImplementedError
+
 
 class ScryptKeyStretching(KeyStretching):
     """ scrypt is the default for key stretching """
@@ -74,4 +79,46 @@ class ScryptKeyStretching(KeyStretching):
                            #p=self.params['p'],
                            N=2**self.params['Nexp'])
 
-TYPE_MAP = {'scrypt': ScryptKeyStretching}
+    @staticmethod
+    def setup(params=None, randfunc=None):
+        if params is None:
+            if randfunc is None:
+                randfunc = Crypto.Random.new().read
+            params = {'type': 'scrypt',
+                      'salt': randfunc(32),
+                      #'r': 8,
+                      #'p': 1,
+                      'Nexp': 15}
+        return KeyStretching.setup(params)
+
+class Argon2KeyStretching(KeyStretching):
+    """ argon2 is the winner of the recent Password Hashing Competition.
+        It is planned to be the next default for pol.  """
+
+    def __init__(self, params):
+        super(Argon2KeyStretching, self).__init__(params)
+        if not 'v' in params:
+            params['v'] = 0x10
+        for attr in ('t', 'm', 'p', 'v'):
+            if not attr in params:
+                raise KeyStretchingParameterError("Missing param `%s'" % attr)
+            if not isinstance(params[attr], int):
+                raise KeyStretchingParameterError("%s should be int" % attr)
+            if params[attr] < 1:
+                raise KeyStretchingParameterError("%s cannot be negative"% attr)
+        if not 'salt' in params or not isinstance(params['salt'], basestring):
+            raise KeyStretchingParameterError("Invalid param `salt'")
+
+    def stretch(self, password):
+        return argon2.low_level.hash_secret_raw(
+                            secret=password,
+                            salt=self.params['salt'],
+                            time_cost=self.params['t'],
+                            memory_cost=self.params['m'],
+                            parallelism=self.params['p'],
+                            hash_len=64,
+                            version=self.params['v'],
+                            type=argon2.low_level.Type.D)
+
+TYPE_MAP = {'scrypt': ScryptKeyStretching,
+            'argon2': Argon2KeyStretching}

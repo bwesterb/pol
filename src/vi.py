@@ -10,6 +10,7 @@ import pol.session
 import pol.clipboard
 
 import urwid
+import fuzzywuzzy.fuzz
 
 l = logging.getLogger(__name__)
 
@@ -29,11 +30,13 @@ class PasswordEdit(urwid.Edit):
 class EntryWidget(urwid.Columns):
     """ Widget used in the list of entries. """
 
-    def __init__(self, entry, clicked_callback):
+    def __init__(self, entry, score, clicked_callback):
         self.entry = entry
+        self.score = score
         self.clicked_callback = clicked_callback
         super(EntryWidget, self).__init__([
                 urwid.SelectableIcon(self.entry.key),
+                # urwid.Text(str(self.score)),
                 urwid.Text(self.entry.note if self.entry.note else '')])
 
     def keypress(self, size, key):
@@ -49,19 +52,25 @@ class SessionSearchResultsListWalker(urwid.ListWalker):
         self.session = session
         self.refresh()
         self.focus = 0
+        self.query = ''
         self.entry_clicked_callback = entry_clicked_callback
         super(SessionSearchResultsListWalker, self).__init__()
 
+    def set_query(self, query):
+        self.query = query
+        self.refresh()
+
     def refresh(self):
-        self.search_results = []
-        for container in self.session.containers:
-            try:
-                self.search_results.extend(container.list())
-            except pol.safe.MissingKey:
-                pass
+        # TODO optimize
+        self.search_results = sorted(filter(lambda x: x[0], (
+                (entry, fuzzywuzzy.fuzz.WRatio(self.query, entry.key)
+                        if self.query else 0)
+                    for entry in self.session.entries)),
+                        key=lambda x: (100 - x[1], x[0].key))
 
     def __getitem__(self, pos):
-        return EntryWidget(self.search_results[pos],
+        return EntryWidget(self.search_results[pos][0],
+                    self.search_results[pos][1],
                     self.entry_clicked_callback)
 
     def next_position(self, pos):
@@ -94,15 +103,17 @@ class VisualPol(object):
         if key == 'ctrl p':
             if self.loop.widget is self.main_window:
                 self.show_password_dialog()
-        if key == 'ctrl x':
+        elif key == 'ctrl x':
             raise urwid.ExitMainLoop()
+        elif not self.query.keypress((0,), key):
+            self.show_query()
         else:
             self.info("Unknown key %r.  Press ctrl-x to exit.", key)
 
     def info(self, text, *args):
         l.info(text, *args)
         fmt_text = text % args
-        self.footer.set_text(fmt_text)
+        self.status.set_text(fmt_text)
 
     def main(self):
         with pol.safe.open(os.path.expanduser(self.program.safe_path),
@@ -111,18 +122,30 @@ class VisualPol(object):
             self.safe = safe
             self.session = pol.session.Session(safe)
 
+            # Header
             self.header = urwid.Text("pol {}".format(pol.__version__))
-            self.footer = urwid.Text("")
+
+            # Footer
+            self.status = urwid.Text("")
+            self.query = urwid.Edit('/')
+            urwid.connect_signal(self.query, 'change', self.on_query_changed)
+
+            # List
             self.search_results_walker = SessionSearchResultsListWalker(
                                             self.session,
                                             self.on_entry_clicked)
             self.body = urwid.ListBox(self.search_results_walker)
 
-            self.main_window = urwid.Frame(self.body, self.header, self.footer)
+            # Main window
+            self.main_window = urwid.Frame(self.body, self.header, self.status)
+
+            # Password dialog
             self.password_edit = PasswordEdit(self.on_password_chosen)
             self.password_dialog = urwid.Overlay(
                     urwid.LineBox(self.password_edit), self.main_window,
                     'center', 20, 'middle', None)
+
+            # Clipboard dialog
             self.clipboard_dialog_button = urwid.Button("Clear",
                         self.on_clipboard_dialog_closed)
             self.clipboard_dialog = urwid.Overlay(
@@ -131,6 +154,8 @@ class VisualPol(object):
                         self.clipboard_dialog_button])),
                     self.main_window,
                     'center', 30, 'middle', None)
+
+            # Loop
             self.loop = urwid.MainLoop(self.password_dialog,
                                unhandled_input=self.unhandled_input)
             self.loop.run()
@@ -144,9 +169,16 @@ class VisualPol(object):
             return
         self.show_clipboard_dialog()
 
+    def on_query_changed(self, widget, new_text):
+        self.search_results_walker.set_query(new_text)
+        if not new_text:
+            self.hide_query(reset_query=False)
+        self.body._invalidate()
+
     def on_clipboard_dialog_closed(self, button):
         pol.clipboard.clear()
         self.info("Clipboard cleared")
+        self.hide_query()
         self.show_main_window()
 
     def on_password_chosen(self, password):
@@ -159,9 +191,19 @@ class VisualPol(object):
         self.show_main_window()
         if self._after_password_dialog_callback:
             self._after_password_dialog_callback()
+        else:
+            self.hide_query()
 
     def show_main_window(self):
         self.loop.widget = self.main_window
+
+    def show_query(self):
+        self.main_window.footer = self.query
+
+    def hide_query(self, reset_query=True):
+        if self.query.edit_text and reset_query:
+            self.query.set_edit_text('')
+        self.main_window.footer = self.status
     
     def show_password_dialog(self, callback=None):
         self._after_password_dialog_callback = callback

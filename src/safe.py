@@ -507,6 +507,7 @@ class ElGamalSafe(Safe):
                 if entry is None:
                     continue
                 ret.append(ElGamalSafe.MainEntry(self, i))
+            # TODO cache?
             if self.secret_data and self.append_data:
                 for i, raw_entry in enumerate(self.append_data.entries):
                     ret.append(ElGamalSafe.AppendEntry(self, i,

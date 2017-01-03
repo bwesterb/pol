@@ -13,8 +13,11 @@ class Session(object):
             to an already openend container. """
         # NOTE safe.open_containers will add access to already opened
         #      containers.
+        ok = False
         for cnt in self.safe.open_containers(password):
             self._add_container(cnt)
+            ok = True
+        return ok
 
     def _add_container(self, container):
         if container.id in self._container_set:

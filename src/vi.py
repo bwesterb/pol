@@ -11,6 +11,8 @@ import pol.clipboard
 
 import urwid
 
+l = logging.getLogger(__name__)
+
 class PasswordEdit(urwid.Edit):
     """ The edit-box used for entering passwords. """
 
@@ -21,6 +23,7 @@ class PasswordEdit(urwid.Edit):
     def keypress(self, size, key):
         if key == 'enter':
             self.callback(self.get_edit_text())
+            return
         return super(PasswordEdit, self).keypress(size, key)
 
 class EntryWidget(urwid.Columns):
@@ -36,6 +39,7 @@ class EntryWidget(urwid.Columns):
     def keypress(self, size, key):
         if key == 'enter':
             self.clicked_callback(self.entry)
+            return
         return super(EntryWidget, self).keypress(size, key)
 
 class SessionSearchResultsListWalker(urwid.ListWalker):
@@ -93,7 +97,12 @@ class VisualPol(object):
         if key == 'ctrl x':
             raise urwid.ExitMainLoop()
         else:
-            logging.info("Unknown key %r", key)
+            self.info("Unknown key %r.  Press ctrl-x to exit.", key)
+
+    def info(self, text, *args):
+        l.info(text, *args)
+        fmt_text = text % args
+        self.footer.set_text(fmt_text)
 
     def main(self):
         with pol.safe.open(os.path.expanduser(self.program.safe_path),
@@ -103,7 +112,7 @@ class VisualPol(object):
             self.session = pol.session.Session(safe)
 
             self.header = urwid.Text("pol {}".format(pol.__version__))
-            self.footer = urwid.Text("status")
+            self.footer = urwid.Text("")
             self.search_results_walker = SessionSearchResultsListWalker(
                                             self.session,
                                             self.on_entry_clicked)
@@ -137,12 +146,15 @@ class VisualPol(object):
 
     def on_clipboard_dialog_closed(self, button):
         pol.clipboard.clear()
+        self.info("Clipboard cleared")
         self.show_main_window()
 
     def on_password_chosen(self, password):
         self.password_edit.set_edit_text('')
         if not self.session.unlock(password):
+            self.info("Password did not unlock any container")
             return
+        self.info('')
         self.search_results_walker.refresh()
         self.show_main_window()
         if self._after_password_dialog_callback:

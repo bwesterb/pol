@@ -1,9 +1,6 @@
 pol
 ===
 
-**WARNING** pol is a young project, there might be errors, even
-vulnerabilities --- please help out by testing or reviewing its code.
-
 pol /pɵl/ is a password manager with two important features:
 
 1. A nice commandline interface. Want to generate a password? Just type:

@@ -6,7 +6,7 @@ pol Changelog
 
 Feaures:
 
- - `pol vi`: an ncurses interface!
+ - Preview of `pol vi`: an ncurses interface!
  - Use Argon2d as the default key-stretcher.
 
 Bugfixes:

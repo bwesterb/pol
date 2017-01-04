@@ -14,6 +14,12 @@ import fuzzywuzzy.fuzz
 
 l = logging.getLogger(__name__)
 
+PALETTE = [
+        ('header', 'white', 'dark blue'),
+        ('status', 'white', 'dark blue'),
+        ('query', 'white,bold', 'dark magenta'),
+        ]
+
 class PasswordEdit(urwid.Edit):
     """ The edit-box used for entering passwords. """
 
@@ -103,6 +109,8 @@ class VisualPol(object):
         if key == 'ctrl p':
             if self.loop.widget is self.main_window:
                 self.show_password_dialog()
+        elif key == 'ctrl l':
+            self.loop.draw_screen()
         elif key == 'ctrl x':
             raise urwid.ExitMainLoop()
         elif not self.query.keypress((0,), key):
@@ -123,11 +131,14 @@ class VisualPol(object):
             self.session = pol.session.Session(safe)
 
             # Header
-            self.header = urwid.Text("pol {}".format(pol.__version__))
+            self.header = urwid.AttrWrap(urwid.Text(
+                "pol {}".format(pol.__version__)), 'header')
 
             # Footer
             self.status = urwid.Text("")
+            self.wrappedStatus = urwid.AttrWrap(self.status, 'status')
             self.query = urwid.Edit('/')
+            self.wrappedQuery = urwid.AttrWrap(self.query, 'query')
             urwid.connect_signal(self.query, 'change', self.on_query_changed)
 
             # List
@@ -137,7 +148,8 @@ class VisualPol(object):
             self.body = urwid.ListBox(self.search_results_walker)
 
             # Main window
-            self.main_window = urwid.Frame(self.body, self.header, self.status)
+            self.main_window = urwid.Frame(self.body, self.header,
+                    self.wrappedStatus)
 
             # Password dialog
             self.password_edit = PasswordEdit(self.on_password_chosen)
@@ -156,7 +168,7 @@ class VisualPol(object):
                     'center', 30, 'middle', None)
 
             # Loop
-            self.loop = urwid.MainLoop(self.password_dialog,
+            self.loop = urwid.MainLoop(self.password_dialog, PALETTE,
                                unhandled_input=self.unhandled_input)
             self.loop.run()
 
@@ -172,7 +184,7 @@ class VisualPol(object):
     def on_query_changed(self, widget, new_text):
         self.search_results_walker.set_query(new_text)
         if not new_text:
-            self.hide_query(reset_query=False)
+            self.hide_query(reset_query=False, reset_focus=False)
         self.body._invalidate()
 
     def on_clipboard_dialog_closed(self, button):
@@ -198,12 +210,14 @@ class VisualPol(object):
         self.loop.widget = self.main_window
 
     def show_query(self):
-        self.main_window.footer = self.query
+        self.main_window.footer = self.wrappedQuery
 
-    def hide_query(self, reset_query=True):
+    def hide_query(self, reset_query=True, reset_focus=True):
         if self.query.edit_text and reset_query:
             self.query.set_edit_text('')
-        self.main_window.footer = self.status
+        if reset_focus:
+            self.body.set_focus(0)
+        self.main_window.set_footer(self.wrappedStatus)
     
     def show_password_dialog(self, callback=None):
         self._after_password_dialog_callback = callback

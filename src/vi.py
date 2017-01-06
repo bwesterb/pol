@@ -124,9 +124,7 @@ class VisualPol(object):
         self.status.set_text(fmt_text)
 
     def main(self):
-        with pol.safe.open(os.path.expanduser(self.program.safe_path),
-                           nworkers=self.program.args.workers,
-                           use_threads=self.program.args.threads) as safe:
+        with self.program._open_safe() as safe:
             self.safe = safe
             self.session = pol.session.Session(safe)
 
@@ -170,6 +168,7 @@ class VisualPol(object):
             # Loop
             self.loop = urwid.MainLoop(self.password_dialog, PALETTE,
                                unhandled_input=self.unhandled_input)
+            l.debug("Starting main loop")
             self.loop.run()
 
     def on_entry_clicked(self, entry):

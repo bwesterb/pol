@@ -403,6 +403,7 @@ class ElGamalSafe(Safe):
                 if autosave:
                     self.autosave = True
             if (move_append_entries and self.secret_data
+                    and self.append_data
                     and self.append_data.entries):
                 self._move_append_entries(on_move_append_entries)
 

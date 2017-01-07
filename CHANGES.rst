@@ -4,7 +4,10 @@ pol Changelog
 0.4.1 (unreleased)
 ------------------
 
-- Nothing changed yet.
+Bugfixes:
+
+ - Fix a bug where a container would not open if no list or append-only
+   password is set.
 
 
 0.4.0 (2017-01-04)

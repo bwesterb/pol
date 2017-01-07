@@ -153,7 +153,7 @@ class VisualPol(object):
             self.password_edit = PasswordEdit(self.on_password_chosen)
             self.password_dialog = urwid.Overlay(
                     urwid.LineBox(self.password_edit), self.main_window,
-                    'center', 20, 'middle', None)
+                    'center', 40, 'middle', None)
 
             # Clipboard dialog
             self.clipboard_dialog_button = urwid.Button("Clear",
@@ -211,6 +211,7 @@ class VisualPol(object):
     def show_query(self):
         self.main_window.footer = self.wrappedQuery
 
+    # TODO we hit an urwid bug here: https://github.com/urwid/urwid/issues/212
     def hide_query(self, reset_query=True, reset_focus=True):
         if self.query.edit_text and reset_query:
             self.query.set_edit_text('')

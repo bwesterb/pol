@@ -1,6 +1,7 @@
 """ Implementation of pol safes.  See `Safe`. """
 
 import os
+import shutil
 import time
 import struct
 import logging
@@ -109,7 +110,7 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False,
                                  use_threads=use_threads)
                 with tempfile.NamedTemporaryFile(delete=False) as f:
                     safe.store_to_stream(f)
-                    os.rename(f.name, path)
+                    shutil.move(f.name, path)
     except lockfile.AlreadyLocked:
         raise SafeLocked
     finally:

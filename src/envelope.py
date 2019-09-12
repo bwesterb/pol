@@ -24,12 +24,12 @@ class Envelope(object):
     def setup(params=None):
         """ Set-up the Envelope given by `params`. """
         if params is None:
-            params = {'type': 'seccure',
-                      'curve': 'secp160r1'}
-        if ('type' not in params or not isinstance(params['type'], basestring)
-                or params['type'] not in TYPE_MAP):
+            params = {b'type': b'seccure',
+                      b'curve': b'secp160r1'}
+        if (b'type' not in params or not isinstance(params[b'type'], bytes)
+                or params[b'type'] not in TYPE_MAP):
             raise EnvelopeParameterError("Invalid `type' attribute")
-        return TYPE_MAP[params['type']](params)
+        return TYPE_MAP[params[b'type']](params)
 
     def generate_keypair(self):
         """ Generates and returns a (public, private)-keypair """
@@ -50,15 +50,16 @@ class SeccureEnvelope(Envelope):
         [1] http://point-at-infinity.org/seccure/ """
     def __init__(self, params):
         super(SeccureEnvelope, self).__init__(params)
-        if not 'curve' in params:
+        if not b'curve' in params:
             raise EnvelopeParameterError("Missing param `curve'")
-        if not isinstance(params['curve'], basestring):
+        if not isinstance(params[b'curve'], bytes):
             raise EnvelopeParameterError("`curve' should be string")
         try:
-            self.curve = seccure.Curve.by_name(params['curve'])
+            self.curve = seccure.Curve.by_name(
+                    params[b'curve'].decode('utf-8'))
         except KeyError:
             raise EnvelopeParameterError("Curve %s not supported"
-                                % repr(params['curve']))
+                                % repr(params[b'curve']))
 
     def generate_keypair(self, randfunc=None):
         if randfunc is None:
@@ -73,4 +74,4 @@ class SeccureEnvelope(Envelope):
         p = self.curve.passphrase_to_privkey(privkey)
         return self.curve.decrypt(ciphertext, p)
 
-TYPE_MAP = {'seccure': SeccureEnvelope}
+TYPE_MAP = {b'seccure': SeccureEnvelope}

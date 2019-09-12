@@ -68,10 +68,10 @@ class SessionSearchResultsListWalker(urwid.ListWalker):
 
     def refresh(self):
         # TODO optimize
-        self.search_results = sorted(filter(lambda x: x[0], (
+        self.search_results = sorted([x for x in (
                 (entry, fuzzywuzzy.fuzz.WRatio(self.query, entry.key)
                         if self.query else 0)
-                    for entry in self.session.entries)),
+                    for entry in self.session.entries) if x[0]],
                         key=lambda x: (100 - x[1], x[0].key))
 
     def __getitem__(self, pos):
@@ -194,7 +194,7 @@ class VisualPol(object):
 
     def on_password_chosen(self, password):
         self.password_edit.set_edit_text('')
-        if not self.session.unlock(password):
+        if not self.session.unlock(password.encode('utf-8')):
             self.info("Password did not unlock any container")
             return
         self.info('')

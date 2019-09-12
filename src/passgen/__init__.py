@@ -37,7 +37,7 @@ def generate_password(length=None, entropy=None, kind='dense'):
         entropy = 128
     if not length:
         length = int(math.ceil(entropy / math.log(len(alphabet), 2)))
-    for i in xrange(length):
+    for i in range(length):
         bits.append(Crypto.Random.random.choice(alphabet))
     if add_spaces:
         return ' '.join(bits)

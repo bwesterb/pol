@@ -29,13 +29,13 @@ class KeyDerivation(object):
         if params is None:
             if randfunc is None:
                 randfunc = Crypto.Random.new().read
-            params = {'type': 'sha',
-                      'bits': 256,
-                      'salt': randfunc(32)}
-        if ('type' not in params or not isinstance(params['type'], basestring)
-                or params['type'] not in TYPE_MAP):
+            params = {b'type': b'sha',
+                      b'bits': 256,
+                      b'salt': randfunc(32)}
+        if (b'type' not in params or not isinstance(params[b'type'], bytes)
+                or params[b'type'] not in TYPE_MAP):
             raise KeyDerivationParameterError("Invalid `type' attribute")
-        return TYPE_MAP[params['type']](params)
+        return TYPE_MAP[params[b'type']](params)
 
     def __call__(self, args, length=32):
         return self.derive(args, length)
@@ -54,19 +54,19 @@ class SHAKeyDerivation(KeyDerivation):
 
     def __init__(self, params):
         super(SHAKeyDerivation, self).__init__(params)
-        if not 'salt' in params:
+        if not b'salt' in params:
             raise KeyDerivationParameterError("Missing param `salt'")
-        if not 'bits' in params:
+        if not b'bits' in params:
             raise KeyDerivationParameterError("Missing param `bits'")
-        if not isinstance(params['salt'], basestring):
+        if not isinstance(params[b'salt'], bytes):
             raise KeyDerivationParameterError("`salt' should be a string")
-        if not isinstance(params['bits'], int):
+        if not isinstance(params[b'bits'], int):
             raise KeyDerivationParameterError("`bits' should be int")
-        if params['bits'] not in (256,):
+        if params[b'bits'] not in (256,):
             raise KeyDerivationParameterError(
                     "We do not support the given `bits'")
-        self.bits = params['bits']
-        self.salt = params['salt']
+        self.bits = params[b'bits']
+        self.salt = params[b'salt']
         self.word_struct = struct.Struct(">H")
 
     def _derive(self, args):
@@ -77,21 +77,22 @@ class SHAKeyDerivation(KeyDerivation):
             assert False
         oh = new_hash()
         for arg in args:
+            assert isinstance(arg, bytes) # XXX remove
             oh.update(new_hash(arg).digest())
         return oh.digest()
 
     def derive(self, args, length=32):
-        ret = ''
-        byts = self.bits / 8
-        n = length / byts
+        ret = b''
+        byts = self.bits // 8
+        n = length // byts
         if length % byts != 0:
             n += 1
-        for i in xrange(n):
+        for i in range(n):
             ret += self._derive(args + [self.word_struct.pack(i), self.salt])
         return ret[:length]
 
     @property
     def size(self):
-        return self.bits / 8
+        return self.bits // 8
 
-TYPE_MAP = {'sha': SHAKeyDerivation}
+TYPE_MAP = {b'sha': SHAKeyDerivation}

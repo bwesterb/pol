@@ -1,10 +1,10 @@
 pol Changelog
 =============
 
-0.4.2 (unreleased)
+0.5.0 (unreleased)
 ------------------
 
-- Nothing changed yet.
+ - Moved from Python 2 to Python 3.
 
 
 0.4.1 (2017-01-07)

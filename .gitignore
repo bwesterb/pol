@@ -8,3 +8,4 @@
 /MANIFEST
 /pyinstaller/build
 /pyinstaller/dist
+/.eggs

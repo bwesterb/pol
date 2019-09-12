@@ -17,221 +17,221 @@ class TestElgamalSafe(unittest.TestCase):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=1)
         randfunc = Crypto.Random.new().read
         safe._write_block(0, safe._eg_encrypt_block(
-                        'key', 0, '123456789', randfunc, annex=True))
-        self.assertEqual(safe._eg_decrypt_block('key', 0),
-                        '123456789'.ljust(safe.bytes_per_block, '\0'))
+                        b'key', 0, b'123456789', randfunc, annex=True))
+        self.assertEqual(safe._eg_decrypt_block(b'key', 0),
+                        b'123456789'.ljust(safe.bytes_per_block, b'\0'))
         data = randfunc(safe.bytes_per_block)
         safe._write_block(0, safe._eg_encrypt_block(
-                        'key', 0, data, randfunc))
-        self.assertEqual(safe._eg_decrypt_block('key', 0), data)
+                        b'key', 0, data, randfunc))
+        self.assertEqual(safe._eg_decrypt_block(b'key', 0), data)
     def test_slice_store(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
         sl = safe._new_slice(10)
         self.assertEqual(sl.size, 1224)
-        self.assertRaises(pol.safe.WrongKeyError, sl.store, 'key', '!'*sl.size)
-        sl.store('key', '!'*sl.size, annex=True)
-        sl.store('key', '!'*sl.size)
-        self.assertRaises(ValueError, sl.store, 'key', '!'*(sl.size+1))
-        sl.store('key', '!'*1)
-        sl.store('key', '')
+        self.assertRaises(pol.safe.WrongKeyError, sl.store, b'key', b'!'*sl.size)
+        sl.store(b'key', b'!'*sl.size, annex=True)
+        sl.store(b'key', b'!'*sl.size)
+        self.assertRaises(ValueError, sl.store, b'key', b'!'*(sl.size+1))
+        sl.store(b'key', b'!'*1)
+        sl.store(b'key', b'')
     def test_find_slices(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
         sl1 = safe._new_slice(2)
         sl2 = safe._new_slice(2)
         sl3 = safe._new_slice(2)
-        sl1.store('key', '!!!!', annex=True)
-        sl2.store('key', '!!!!', annex=True)
-        sl3.store('key3', '!!!!', annex=True)
-        self.assertFalse(list(safe._find_slices('nokey')))
-        self.assertEqual(len(list(safe._find_slices('key'))), 2)
+        sl1.store(b'key', b'!!!!', annex=True)
+        sl2.store(b'key', b'!!!!', annex=True)
+        sl3.store(b'key3', b'!!!!', annex=True)
+        self.assertFalse(list(safe._find_slices(b'nokey')))
+        self.assertEqual(len(list(safe._find_slices(b'key'))), 2)
     def test_load_slice(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=10)
         sl = safe._new_slice(5)
-        sl.store('key', '!!!!', annex=True)
-        self.assertEqual(safe._load_slice('key', sl.first_index).value,
-                            '!!!!')
+        sl.store(b'key', b'!!!!', annex=True)
+        self.assertEqual(safe._load_slice(b'key', sl.first_index).value,
+                            b'!!!!')
         randfunc = Crypto.Random.new().read
-        sl.store('key', 'abcd'*(sl.size/4))
-        self.assertEqual(safe._load_slice('key', sl.first_index).value,
-                                'abcd'*(sl.size/4))
+        sl.store(b'key', b'abcd'*(sl.size//4))
+        self.assertEqual(safe._load_slice(b'key', sl.first_index).value,
+                                b'abcd'*(sl.size//4))
         data = randfunc(sl.size)
-        sl.store('key', data)
-        self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
+        sl.store(b'key', data)
+        self.assertEqual(safe._load_slice(b'key', sl.first_index).value, data)
     def test_large_slice(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
         sl = safe._new_slice(70)
         randfunc = Crypto.Random.new().read
         data = randfunc(sl.size)
-        sl.store('key', data, annex=True)
-        self.assertEqual(safe._load_slice('key', sl.first_index).value, data)
+        sl.store(b'key', data, annex=True)
+        self.assertEqual(safe._load_slice(b'key', sl.first_index).value, data)
     def test_open_containers(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=70)
+        safe.new_container(b'm', b'l', b'a', nblocks=70)
         self._assert_no_open_containers(safe)
 
-        cs_m = list(safe.open_containers('m'))
+        cs_m = list(safe.open_containers(b'm'))
         self.assertEqual(len(cs_m), 1)
         c_m = cs_m[0]
         self.assertTrue(c_m.can_add)
         del(cs_m, c_m); self._assert_no_open_containers(safe)
 
-        cs_l = list(safe.open_containers('l'))
+        cs_l = list(safe.open_containers(b'l'))
         self.assertEqual(len(cs_l), 1)
         c_l = cs_l[0]
         self.assertTrue(c_l.can_add)
         del(cs_l, c_l); self._assert_no_open_containers(safe)
 
-        cs_a = list(safe.open_containers('a'))
+        cs_a = list(safe.open_containers(b'a'))
         self.assertEqual(len(cs_a), 1)
         c_a = cs_a[0]
         self.assertTrue(c_a.can_add)
         del(cs_a, c_a); self._assert_no_open_containers(safe)
     def test_additional_keys(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=30,
-                                additional_keys=['b','a'])
+        safe.new_container(b'm', b'l', b'a', nblocks=30,
+                                additional_keys=[b'b',b'a'])
         self._assert_no_open_containers(safe)
 
-        cs_m = list(safe.open_containers('m'))
+        cs_m = list(safe.open_containers(b'm'))
         self.assertEqual(len(cs_m), 0)
         del(cs_m); self._assert_no_open_containers(safe)
-        cs_m = list(safe.open_containers('m', additional_keys=['a', 'b']))
+        cs_m = list(safe.open_containers(b'm', additional_keys=[b'a', b'b']))
         self.assertEqual(len(cs_m), 1)
         c_m = cs_m[0]
         self.assertTrue(c_m.can_add)
         del(cs_m, c_m); self._assert_no_open_containers(safe)
 
-        cs_l = list(safe.open_containers('l'))
+        cs_l = list(safe.open_containers(b'l'))
         self.assertEqual(len(cs_l), 0)
         del(cs_l); self._assert_no_open_containers(safe)
-        cs_l = list(safe.open_containers('l', additional_keys=['a', 'b']))
+        cs_l = list(safe.open_containers(b'l', additional_keys=[b'a', b'b']))
         self.assertEqual(len(cs_l), 1)
         c_l = cs_l[0]
         self.assertTrue(c_l.can_add)
         del(cs_l, c_l); self._assert_no_open_containers(safe)
 
-        cs_a = list(safe.open_containers('a'))
+        cs_a = list(safe.open_containers(b'a'))
         self.assertEqual(len(cs_a), 0)
         del(cs_a); self._assert_no_open_containers(safe)
-        cs_a = list(safe.open_containers('a', additional_keys=['a', 'b']))
+        cs_a = list(safe.open_containers(b'a', additional_keys=[b'a', b'b']))
         self.assertEqual(len(cs_a), 1)
         c_a = cs_a[0]
         self.assertTrue(c_a.can_add)
         del(cs_a, c_a); self._assert_no_open_containers(safe)
 
-        self.assertEqual(len(list(safe.open_containers('m',
-                        additional_keys=['a', 'b', 'c']))), 0)
-        self.assertEqual(len(list(safe.open_containers('o',
-                        additional_keys=['a', 'b']))), 0)
+        self.assertEqual(len(list(safe.open_containers(b'm',
+                        additional_keys=[b'a', b'b', b'c']))), 0)
+        self.assertEqual(len(list(safe.open_containers(b'o',
+                        additional_keys=[b'a', b'b']))), 0)
 
     def test_main_data(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', None, nblocks=70)
+        safe.new_container(b'm', b'l', None, nblocks=70)
         self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         self._fill_container(c)
         self._check_container(c)
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         self._check_container(c)
         self._check_container_secrets(c)
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('l'))[0]
+        c = list(safe.open_containers(b'l'))[0]
         self._check_container(c)
         del(c); self._assert_no_open_containers(safe)
     def test_append_data(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=70)
+        safe.new_container(b'm', b'l', b'a', nblocks=70)
         self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('a'))[0]
+        c = list(safe.open_containers(b'a'))[0]
         self._fill_container(c)
         self.assertRaises(pol.safe.MissingKey, self._check_container, c)
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m', move_append_entries=False))[0]
+        c = list(safe.open_containers(b'm', move_append_entries=False))[0]
         self._check_container(c)
         self._check_container_secrets(c)
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('l', move_append_entries=False))[0]
+        c = list(safe.open_containers(b'l', move_append_entries=False))[0]
         self.assertEqual(len(list(c.list())), 0)
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         self._check_container(c)
         self._check_container_secrets(c)
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('l', move_append_entries=False))[0]
+        c = list(safe.open_containers(b'l', move_append_entries=False))[0]
         self._check_container(c)
     def test_removal(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=70)
+        safe.new_container(b'm', b'l', b'a', nblocks=70)
         self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('a'))[0]
+        c = list(safe.open_containers(b'a'))[0]
         self._fill_container(c)
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m', move_append_entries=False))[0]
+        c = list(safe.open_containers(b'm', move_append_entries=False))[0]
         list(c.get('key1'))[0].remove()
         list(c.get('key2'))[0].remove()
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         list(c.get('key3'))[0].remove()
         list(c.get('key4'))[0].remove()
         list(c.get('key4'))[0].remove()
         c.save()
         del(c); self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         self.assertEqual(len(c.list()), 0)
         del(c); self._assert_no_open_containers(safe)
     def test_opening_containers_again(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=70)
+        safe.new_container(b'm', b'l', b'a', nblocks=70)
         self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('a'))[0]
-        c2 = list(safe.open_containers('a'))[0]
+        c = list(safe.open_containers(b'a'))[0]
+        c2 = list(safe.open_containers(b'a'))[0]
         self.assertTrue(c is c2)
         self.assertFalse(c.has_secrets)
         self.assertRaises(pol.safe.MissingKey, c2.list)
         del(c2)
-        c2 = list(safe.open_containers('l'))[0]
+        c2 = list(safe.open_containers(b'l'))[0]
         self.assertTrue(c2 is c)
         self.assertEqual(c2.list(), [])
         self.assertFalse(c.has_secrets)
         del(c2)
-        c2 = list(safe.open_containers('m'))[0]
+        c2 = list(safe.open_containers(b'm'))[0]
         self.assertTrue(c2 is c)
         self.assertTrue(c.has_secrets)
     def test_autosave(self):
         safe = pol.safe.Safe.generate(precomputed_gp=True, n_blocks=70)
-        safe.new_container('m', 'l', 'a', nblocks=70)
+        safe.new_container(b'm', b'l', b'a', nblocks=70)
         self._assert_no_open_containers(safe)
-        c = list(safe.open_containers('a'))[0]
+        c = list(safe.open_containers(b'a'))[0]
         self._fill_container(c)
         del(c)
         self._assert_no_open_containers(safe)
 
-        c = list(safe.open_containers('m'))[0]
+        c = list(safe.open_containers(b'm'))[0]
         self._check_container(c)
         self._check_container_secrets(c)
     def _assert_no_open_containers(self, safe):
         ok = True
-        for ref in safe._opened_containers.itervalues():
+        for ref in safe._opened_containers.values():
             if ref():
                 ok = False
                 break

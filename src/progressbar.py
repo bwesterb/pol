@@ -92,10 +92,10 @@ class ProbablisticProgressBar(BaseProgressBar):
 if __name__ == '__main__':
     import time
     with ProgressBar() as p:
-        for i in xrange(100):
+        for i in range(100):
             p(i/100.0)
             time.sleep(0.01)
     with ProbablisticProgressBar() as p:
-        for i in xrange(100):
+        for i in range(100):
             p(coin(0.005, i))
             time.sleep(0.01)

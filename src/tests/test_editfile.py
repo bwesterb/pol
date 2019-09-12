@@ -7,26 +7,26 @@ class TestEditfile(unittest.TestCase):
         orig = {0: [('key' + str(i),
                          'secret' + str(i),
                          'note' + str(i) if i % 2 == 0  else None)
-                                for i in xrange(158)]}
+                                for i in range(158)]}
         dumped = pol.editfile.dump(orig)
-        parsed = pol.editfile.parse(dumped, orig.keys(), {})
+        parsed = pol.editfile.parse(dumped, list(orig.keys()), {})
         self.assertEqual(orig, parsed)
 
     def test_multContainers(self):
         orig = {0: [('key' + str(i),
                          'secret' + str(i),
                          'note' + str(i) if i % 2 == 0  else None)
-                                for i in xrange(10)],
+                                for i in range(10)],
                 1: [('key' + str(i),
                          'secret' + str(i),
                          'note' + str(i) if i % 2 == 0  else None)
-                                for i in xrange(10)],
+                                for i in range(10)],
                 2: [('key' + str(i),
                          'secret' + str(i),
                          'note' + str(i) if i % 2 == 0  else None)
-                                for i in xrange(10)]}
+                                for i in range(10)]}
         dumped = pol.editfile.dump(orig)
-        parsed = pol.editfile.parse(dumped, orig.keys(), {})
+        parsed = pol.editfile.parse(dumped, list(orig.keys()), {})
         self.assertEqual(orig, parsed)
 
     def test_spaces(self):
@@ -54,7 +54,7 @@ class TestEditfile(unittest.TestCase):
                     ('\\"', '\\', '\\\\'),
                     ('a b', 'c d \\\\"', '" hi "')]}
         dumped = pol.editfile.dump(orig)
-        parsed = pol.editfile.parse(dumped, orig.keys(), {})
+        parsed = pol.editfile.parse(dumped, list(orig.keys()), {})
         self.assertEqual(orig, parsed)
 
 if __name__ == '__main__':

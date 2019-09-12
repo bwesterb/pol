@@ -20,6 +20,10 @@ elif 'POL_NO_DEMANDIMPORT' not in os.environ:
     demandimport.ignore('functools') # urwidtrees/widgets.py
     demandimport.ignore('urwid.command_map')
     demandimport.ignore('_thread')
+    demandimport.ignore('_cffi_backend') # argon2-cffi
+    demandimport.ignore('_compat_pickle') # TODO investigate
+    demandimport.ignore('numbers')        #      ibidem
+    demandimport.ignore('gmpy2')          #      ibidem
     demandimport.enable()
 
 import contextlib
@@ -28,7 +32,6 @@ import readline
 import argparse
 import logging
 import os.path
-import getpass
 import atexit
 import pprint
 import shlex
@@ -97,7 +100,7 @@ class Program(object):
         g_basic.add_argument('-h', '--help', action='help',
                     help='show this help message and exit')
         g_basic.add_argument('--verbose', '-v', action='count',
-                            dest='verbosity',
+                            dest='verbosity', default=0,
                     help='Add these to make pol chatty')
         g_basic.add_argument('--version', '-V', action=Program._VersionAction,
                             nargs=0,
@@ -465,16 +468,16 @@ class Program(object):
                     and os.stat(cached_path).st_mtime
                             > os.stat(path).st_mtime):
             l.debug('Loading cached configuration file %s ...', cached_path)
-            with open(cached_path) as f:
+            with open(cached_path, 'rb') as f:
                 try:
-                    self.config = msgpack.load(f)
+                    self.config = msgpack.load(f, raw=True)
                     l.debug('    ... done')
                     return
                 except Exception as e:
                     l.warning('Exception loading cached configuration file.  '+
                                 'Loading original.  (%s)', e)
         l.debug('Loading configuration file %s ...', path)
-        with open(path) as f:
+        with open(path, 'rb') as f:
             try:
                 self.config = yaml.load(f)
                 if not self.config:
@@ -484,8 +487,8 @@ class Program(object):
                                 path, e))
                 return -18
         l.debug('Writing cached configuration file %s ...', cached_path)
-        with open(cached_path, 'w') as f:
-            msgpack.dump(self.config, f)
+        with open(cached_path, 'wb') as f:
+            msgpack.dump(self.config, f, use_bin_type=True)
 
     def main(self, argv, exitcode_pipe_fd):
         """ Main entry point.
@@ -557,15 +560,15 @@ class Program(object):
 
     def cmd_init(self):
         if (os.path.exists(self.safe_path) and not self.args.force):
-            print '%s exists.  Use -f to override.' % self.safe_path
+            print('%s exists.  Use -f to override.' % self.safe_path)
             return -10
         self._ensure_keyfiles_are_loaded()
         if self.args.rerand_bits < 1025 and not self.args.i_know_its_unsafe:
-            print 'You should now use less than 1025b group parameters.'
+            print('You should now use less than 1025b group parameters.')
             return -9
         if self.args.precomputed_gp and not self.args.i_know_its_unsafe:
             # TODO are 2049 precomputed group parameters safe?
-            print 'You should now use precomputed group parameters.'
+            print('You should now use precomputed group parameters.')
             return -9
         if self.args.passwords:
             interactive = False
@@ -573,27 +576,27 @@ class Program(object):
         else:
             interactive = True
         if interactive:
-            print "You are about to create a new safe.  A safe can have up to six"
-            print "separate containers to store your secrets.  A container is"
-            print "accessed by one of its passwords.  Without one of its passwords,"
-            print "you cannot prove the existence of a container."
-            print
+            print("You are about to create a new safe.  A safe can have up to six")
+            print("separate containers to store your secrets.  A container is")
+            print("accessed by one of its passwords.  Without one of its passwords,")
+            print("you cannot prove the existence of a container.")
+            print()
         first = True
         second = False
         pws = []
-        for i in xrange(1, 7):
+        for i in range(1, 7):
             if interactive:
                 if not first:
-                    print
-                print 'Container #%s' % i
+                    print()
+                print('Container #%s' % i)
                 if first:
-                    print "  Each container must have a master-password.  This password gives"
-                    print "  full access to the container."
-                    print
+                    print("  Each container must have a master-password.  This password gives")
+                    print("  full access to the container.")
+                    print()
                 if second:
-                    print "  Now enter the passwords for the second container."
-                    print "  Leave blank if you do not want a second container."
-                    print
+                    print("  Now enter the passwords for the second container.")
+                    print("  Leave blank if you do not want a second container.")
+                    print()
             if interactive:
                 if first:
                     masterpw = pol.terminal.zxcvbn_getpass(
@@ -606,22 +609,22 @@ class Program(object):
             if not masterpw:
                 break
             if interactive and first:
-                print
-                print "  A container can have a list-password.  With this password you can"
-                print "  list and add entries.  You cannot see the secrets of the existing"
-                print "  entries.  Leave blank if you do not want a list-password."
-                print
+                print()
+                print("  A container can have a list-password.  With this password you can")
+                print("  list and add entries.  You cannot see the secrets of the existing")
+                print("  entries.  Leave blank if you do not want a list-password.")
+                print()
             if interactive:
                 listpw = pol.terminal.zxcvbn_getpass(
                             'Enter list-password [no list-password]: ', '    ')
             else:
                 listpw = cmdline_pws.pop() if cmdline_pws else ''
             if interactive and first:
-                print
-                print "  A container can have an append-password.  With this password you"
-                print "  can only add entries.  You cannot see the existing entries."
-                print "  Leave blank if you do not want an append-password."
-                print
+                print()
+                print("  A container can have an append-password.  With this password you")
+                print("  can only add entries.  You cannot see the existing entries.")
+                print("  Leave blank if you do not want an append-password.")
+                print()
             if interactive:
                 appendpw = pol.terminal.zxcvbn_getpass(
                         'Enter append-password [no append-password]: ', '    ')
@@ -632,13 +635,13 @@ class Program(object):
             if first:
                 first = False
                 second = True
-            pws.append((masterpw if masterpw else None,
-                        listpw if listpw else None,
-                        appendpw if appendpw else None))
+            pws.append((masterpw.encode('utf-8') if masterpw else None,
+                        listpw.encode('utf-8') if listpw else None,
+                        appendpw.encode('utf-8') if appendpw else None))
         if interactive:
-            print
+            print()
         if not self.args.precomputed_gp:
-            print 'Generating group parameters for this safe. This can take a while ...'
+            print('Generating group parameters for this safe. This can take a while ...')
         # TODO generate group parameters in parallel
         progressbar = pol.progressbar.ProbablisticProgressBar()
         progressbar.start()
@@ -661,14 +664,14 @@ class Program(object):
                                  n_blocks=self.args.blocks) as safe:
                 for i, mlapw in enumerate(pws):
                     mpw, lpw, apw = mlapw
-                    print '  allocating container #%s ...' % (i+1)
+                    print('  allocating container #%s ...' % (i+1))
                     c = safe.new_container(mpw, lpw, apw,
                                     additional_keys=self.additional_keys,
                                     nblocks=blocks_per_container)
-                print '  trashing freespace ...'
+                print('  trashing freespace ...')
                 safe.trash_freespace()
         except pol.safe.SafeAlreadyExistsError:
-            print '%s exists.  Use -f to override.' % self.safe_path
+            print('%s exists.  Use -f to override.' % self.safe_path)
             return -10
 
     def cmd_touch(self):
@@ -679,14 +682,14 @@ class Program(object):
         with self._open_safe() as safe:
             d = dict(safe.data)
             if not self.args.blocks:
-                del d['blocks']
+                del d[b'blocks']
             pprint.pprint(d)
             if not self.args.passwords:
                 return
             for password in self.args.passwords:
                 for container in self._open_containers(safe, password):
-                    print
-                    print 'Container %s' % container.id
+                    print()
+                    print('Container %s' % container.id)
                     if container.main_data:
                         pprint.pprint(container.main_data)
                     if container.append_data:
@@ -700,7 +703,7 @@ class Program(object):
             entries = []
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter password: ')):
+                        else pol.terminal.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -736,7 +739,7 @@ class Program(object):
             entry = entries[n][1]
             sys.stderr.write(' note: %s\n' % pol.text.escape_cseqs(entry.note)
                                                 if entry.note else '')
-            print entry.secret
+            print(entry.secret)
 
     def cmd_remove(self):
         with self._open_safe() as safe:
@@ -744,7 +747,7 @@ class Program(object):
             entries = []
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter password: ')):
+                        else pol.terminal.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -781,15 +784,15 @@ class Program(object):
 
     def cmd_copy(self):
         if not pol.clipboard.available:
-            print 'Clipboard access not available.'
-            print 'Use `pol get\' to print secrets.'
+            print('Clipboard access not available.')
+            print('Use `pol get\' to print secrets.')
             return -7
         with self._open_safe() as safe:
             found_one = False
             entries = []
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter password: ')):
+                        else pol.terminal.getpass('Enter password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -802,10 +805,10 @@ class Program(object):
                 except KeyError:
                     continue
             if not found_one:
-                print 'The password did not open any container.'
+                print('The password did not open any container.')
                 return -1
             if not entries:
-                print 'No entries found'
+                print('No entries found')
                 return -4
             if len(entries) > 1 and not self.args.number:
                 sys.stderr.write('Multiple entries found:\n')
@@ -823,27 +826,27 @@ class Program(object):
                 sys.stderr.write('Entry number out of range.\n')
                 return -15
             entry = entries[n][1]
-            print ' note: %s' % (pol.text.escape_cseqs(entry.note)
-                                    if entry.note else '')
-            print 'Copied secret to clipboard.  Press any key to clear ...'
+            print(' note: %s' % (pol.text.escape_cseqs(entry.note)
+                                    if entry.note else ''))
+            print('Copied secret to clipboard.  Press any key to clear ...')
             pol.clipboard.copy(entry.secret)
             pol.terminal.wait_for_keypress()
             pol.clipboard.clear()
     def cmd_paste(self):
         if not pol.clipboard.available:
-            print 'Clipboard access not available.'
-            print 'Use `pol put\' to add passwords from stdin.'
+            print('Clipboard access not available.')
+            print('Use `pol put\' to add passwords from stdin.')
             return -7
         pw = pol.clipboard.paste()
         if not pw:
-            print 'Clipboard is empty'
+            print('Clipboard is empty')
             return -3
         return self._store(pw)
         pol.clipboard.clear()
     def cmd_put(self):
         pw = self.args.secret if self.args.secret else sys.stdin.read()
         if not pw:
-            print 'No secret given'
+            print('No secret given')
             return -3
         return self._store(pw)
     def _store(self, pw):
@@ -854,7 +857,7 @@ class Program(object):
             stored = False
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter (append-)password: ')):
+                        else pol.terminal.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -865,10 +868,10 @@ class Program(object):
                 except pol.safe.MissingKey:
                     pass
             if not found_one:
-                print 'The password did not open any container.'
+                print('The password did not open any container.')
                 return -1
             if found_one and not stored:
-                print 'No append access to the containers opened by this password'
+                print('No append access to the containers opened by this password')
                 return -2
     def cmd_generate(self):
         if self.args.hash_crack_time:
@@ -908,7 +911,7 @@ class Program(object):
         with self._open_safe() as safe:
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter (append-)password: ')):
+                        else pol.terminal.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 try:
@@ -955,7 +958,7 @@ class Program(object):
                 passwords = []
                 first = True
                 while True:
-                    password = getpass.getpass('Enter password: ' if first
+                    password = pol.terminal.getpass('Enter password: ' if first
                                     else 'Enter next password [done]: ')
                     if first:
                         first = False
@@ -963,9 +966,9 @@ class Program(object):
                         break
                     passwords.append(password)
             else:
-                passwords = [getpass.getpass('Enter password: ')]
+                passwords = [pol.terminal.getpass('Enter password: ')]
         else:
-            passwords = self.args.passwords
+            passwords = [p.encode('utf-8') for p in self.args.passwords]
         with self._open_safe() as safe:
             # First, generate the file to edit
             editfile = {}
@@ -1014,8 +1017,8 @@ class Program(object):
                     sys.stderr.write("No changes.  Aborting.\n")
                     return -21
                 try:
-                    parsed = pol.editfile.parse(edited, containers.keys(),
-                                                    secrets.keys())
+                    parsed = pol.editfile.parse(edited, list(containers.keys()),
+                                                    list(secrets.keys()))
                     break
                 except pol.editfile.ParseBaseException as e:
                     to_edit = pol.editfile.insert_error(edited, e)
@@ -1033,7 +1036,7 @@ class Program(object):
                         entry.secret = secret
                     else:
                         container.add(key, note, secret)
-                for i in xrange(len(parsed[container_id]),
+                for i in range(len(parsed[container_id]),
                                 len(entries[container_id])):
                     entries[container_id][i].remove()
 
@@ -1050,30 +1053,30 @@ class Program(object):
             found_one = False
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter (list-)password: ')):
+                        else pol.terminal.getpass('Enter (list-)password: ')):
                 if not found_one:
                     found_one = True
                 else:
-                    print
-                print 'Container @%s' % container.id
+                    print()
+                print('Container @%s' % container.id)
                 try:
                     got_entry = False
                     for entry in container.list():
                         if regex and not regex.search(entry.key):
                             continue
                         got_entry = True
-                        print ' %-20s %s' % (entry.key,
+                        print(' %-20s %s' % (entry.key,
                                     pol.text.escape_cseqs(entry.note)
-                                                    if entry.note else '')
+                                                    if entry.note else ''))
                     if not got_entry:
                         if regex:
-                            print '  (no matching entries)'
+                            print('  (no matching entries)')
                         else:
-                            print '  (empty)'
+                            print('  (empty)')
                 except pol.safe.MissingKey:
-                    print '  (no list access)'
+                    print('  (no list access)')
             if not found_one:
-                print ' No containers found'
+                print(' No containers found')
 
     def cmd_import(self):
         entries = []
@@ -1105,35 +1108,35 @@ class Program(object):
             the_container = None
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter (append-)password: ')):
+                        else pol.terminal.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:
                     the_container = container
                     break
             if not found_one:
-                print 'The password did not open any container.'
+                print('The password did not open any container.')
                 return -1
             if not the_container:
-                print ('No append access to the containers opened '+
-                            'by this password')
+                print(('No append access to the containers opened '+
+                            'by this password'))
                 return -2
 
             # Import the entries
             for entry in entries:
                 the_container.add(*entry)
             the_container.save()
-            print "%s entries imported" % len(entries)
+            print("%s entries imported" % len(entries))
 
     def cmd_import_keepass(self):
         # First load keepass db
         kppwd = (self.args.keepass_password if self.args.keepass_password
-                        else getpass.getpass('Enter password for KeePass db: '))
+                        else pol.terminal.getpass('Enter password for KeePass db: '))
         fkeyfile = None
         if self.args.keepass_keyfile:
-            fkeyfile = open(self.args.keepass_keyfile)
+            fkeyfile = open(self.args.keepass_keyfile, 'rb')
         try:
-            with open(self.args.path) as f:
+            with open(self.args.path, 'rb') as f:
                 groups, entries = pol.importers.keepass.load(f, kppwd, fkeyfile)
         finally:
             if fkeyfile:
@@ -1145,18 +1148,18 @@ class Program(object):
             the_container = None
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                        else getpass.getpass('Enter (append-)password: ')):
+                        else pol.terminal.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:
                     the_container = container
                     break
             if not found_one:
-                print 'The password did not open any container.'
+                print('The password did not open any container.')
                 return -1
             if not the_container:
-                print ('No append access to the containers opened '+
-                            'by this password')
+                print(('No append access to the containers opened '+
+                            'by this password'))
                 return -2
 
             # Import the entries
@@ -1176,13 +1179,13 @@ class Program(object):
                                   '\n'.join(notes),
                                   entry['password'])
             the_container.save()
-            print "%s entries imported" % n_imported
+            print("%s entries imported" % n_imported)
 
     def cmd_import_psafe3(self):
         # First load psafe3 db
         ps3pwd = (self.args.psafe3_password if self.args.psafe3_password
-                        else getpass.getpass('Enter password for psafe3 db: '))
-        with open(self.args.path) as f:
+                        else pol.terminal.getpass('Enter password for psafe3 db: '))
+        with open(self.args.path, 'rb') as f:
             header, records = pol.importers.psafe3.load(f, ps3pwd)
 
         # Secondly, find a container
@@ -1191,18 +1194,18 @@ class Program(object):
             the_container = None
             for container in self._open_containers(safe,
                     self.args.password if self.args.password
-                            else getpass.getpass('Enter (append-)password: ')):
+                            else pol.terminal.getpass('Enter (append-)password: ')):
                 if not found_one:
                     found_one = True
                 if container.can_add:
                     the_container = container
                     break
             if not found_one:
-                print 'The password did not open any container.'
+                print('The password did not open any container.')
                 return -1
             if not the_container:
-                print ('No append access to the containers opened '+
-                            'by this password')
+                print(('No append access to the containers opened '+
+                            'by this password'))
                 return -2
 
             # Import the records
@@ -1220,7 +1223,7 @@ class Program(object):
                                   '\n'.join(notes),
                                   record['password'])
             the_container.save()
-            print "%s records imported" % len(records)
+            print("%s records imported" % len(records))
 
     def cmd_speed(self):
         return pol.speed.main(self)
@@ -1231,11 +1234,11 @@ class Program(object):
         # TODO a more stateful shell would be nice: then we only have to
         #       ask for the password and rerandomize once.
         if not os.path.exists(self.safe_path):
-            print "No safe found.  Type `init' to create a new safe."
+            print("No safe found.  Type `init' to create a new safe.")
         self.do_not_exit_when_closing_safe = True
         while True:
             try:
-                line = raw_input('pol> ').strip()
+                line = input('pol> ').strip()
             except EOFError:
                 sys.stderr.write("\n")
                 break
@@ -1274,7 +1277,7 @@ class Program(object):
             with self._open_safe() as safe:
                 for container in self._open_containers(safe,
                         self.args.password if self.args.password
-                                else getpass.getpass('Enter password: ')):
+                                else pol.terminal.getpass('Enter password: ')):
                     found_one = True
                     for entry in container.list():
                         rows_written += 1
@@ -1311,7 +1314,7 @@ class Program(object):
             e.g. rerandomizing. """
         if not self.in_background and self.exitcode_pipe_fd:
             self.in_background = True
-            os.write(self.exitcode_pipe_fd, chr(0))
+            os.write(self.exitcode_pipe_fd, b'\0')
             self.exitcode_pipe_fd = None
 
     def _run_command(self):
@@ -1345,10 +1348,12 @@ class Program(object):
         l.debug('Loading keyfiles ...')
         for keyfile in self.keyfiles:
             l.debug('  %s ...', keyfile)
-            with open(keyfile) as f:
+            with open(keyfile, 'rb') as f:
                 self.additional_keys.append(f.read())
 
     def _open_containers(self, safe, password):
+        if isinstance(password, str):
+            password = password.encode('utf-8')
         self._ensure_keyfiles_are_loaded()
         return safe.open_containers(password,
                         on_move_append_entries=self._on_move_append_entries,
@@ -1389,7 +1394,7 @@ class Program(object):
 
     class _VersionAction(argparse.Action):
         def __call__(self, parser, namespace, values, option_stirng):
-            print pol.__version__
+            print(pol.__version__)
             sys.exit()
 
 
@@ -1417,13 +1422,13 @@ def entrypoint(argv=None):
     # to the pipe at exit.  It does not hurt that there are several writes.
     @atexit.register
     def quit_parent_at_exit_of_child():
-        os.write(wait_pipe_fds[1], '\0')
+        os.write(wait_pipe_fds[1], b'\0')
     ret = Program().main(argv, wait_pipe_fds[1])
     if ret is None:
         ret = 0
     if ret < 0:
         ret = 256 + ret
-    os.write(wait_pipe_fds[1], chr(ret))
+    os.write(wait_pipe_fds[1], bytes(ret))
     return ret
 
 if __name__ == '__main__':

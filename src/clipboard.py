@@ -14,7 +14,7 @@ if sys.platform == 'darwin':
     available = True
     def copy(s):
         p = subprocess.Popen(['pbcopy'], stdin=subprocess.PIPE)
-        p.stdin.write(s)
+        p.stdin.write(s.encode('utf-8'))
         p.stdin.close()
         p.wait()
     def clear():
@@ -48,9 +48,9 @@ else:
         # Finally, try Tkinter
         try:
             with demandimport.disabled():
-                import Tkinter
+                import tkinter
             got_tkinter = True
-            tk = Tkinter.Tk()
+            tk = tkinter.Tk()
             tk.withdraw()
             tk.destroy()
         except:
@@ -58,18 +58,18 @@ else:
         if got_tkinter:
             available = True
             def clear():
-                tk = Tkinter.Tk()
+                tk = tkinter.Tk()
                 tk.withdraw()
                 tk.clipboard_clear()
                 tk.destroy()
             def copy(s):
-                tk = Tkinter.Tk()
+                tk = tkinter.Tk()
                 tk.withdraw()
                 tk.clipboard_clear()
                 tk.clipboard_append(s)
                 tk.destroy()
             def paste():
-                tk = Tkinter.Tk()
+                tk = tkinter.Tk()
                 tk.withdraw()
                 ret = tk.clipboard_get()
                 tk.destroy()

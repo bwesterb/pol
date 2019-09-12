@@ -89,7 +89,7 @@ def main(program):
 
 
     for desc, res in data:
-        print '%-40s %.4f %.4f %.4f' % (desc, res[0], res[1], res[2])
+        print('%-40s %.4f %.4f %.4f' % (desc, res[0], res[1], res[2]))
 
 
 

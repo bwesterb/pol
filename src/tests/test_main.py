@@ -34,7 +34,7 @@ class TestMain(unittest.TestCase):
         self.assertEqual(self.pol('export', '-p', 'a'), 0)
     def test_cracktime_names(self):
         self.assertEqual(frozenset(pol.main.cracktime_names),
-                         frozenset(pol.main.cracktimes.keys()))
+                         frozenset(list(pol.main.cracktimes.keys())))
 
 
 if __name__ == '__main__':

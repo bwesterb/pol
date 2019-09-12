@@ -15,8 +15,8 @@ import Crypto.Util.number as number
 
 import Crypto.Random
 
-# gmpy
-import gmpy
+# gmpy2
+import gmpy2
 
 import pol.parallel
 import pol.progressbar
@@ -103,10 +103,10 @@ def _find_safe_prime_initializer(args, kwargs):
 
 def _find_safe_prime(bits, randfunc=None):
     """ Finds a safe prime of `bits` bits """
-    r = gmpy.mpz(number.getRandomNBitInteger(bits-1, randfunc))
-    q = gmpy.next_prime(r)
+    r = gmpy2.mpz(number.getRandomNBitInteger(bits-1, randfunc))
+    q = gmpy2.next_prime(r)
     p = 2*q+1
-    if gmpy.is_prime(p):
+    if gmpy2.is_prime(p):
         return p
 
 def precomputed_group_params(bits=1025):
@@ -147,12 +147,12 @@ def generate_group_params(bits=1025, nworkers=None, use_threads=False,
         progress('g', None)
     l.debug('Searching for a suitable generator g')
     start_time = time.time()
-    q = (p - 1) / 2
+    q = (p - 1) // 2
     while True:
-        g = gmpy.mpz(number.getRandomRange(3, p))
+        g = gmpy2.mpz(number.getRandomRange(3, p))
         if (pow(g, 2, p) == 1 or pow(g, q, p) == 1 or divmod(p-1, g)[1] == 0):
             continue
-        ginv = gmpy.invert(g, p)
+        ginv = gmpy2.invert(g, p)
         if divmod(p - 1, ginv)[1] == 0:
             continue
         break
@@ -164,11 +164,10 @@ def pubkey_from_privkey(privkey, gp):
 def string_to_group(s):
     return pol.serialization.string_to_number(s)
 def group_to_string(n, size):
-    # TODO is mpz.binary() stable?
-    return pol.serialization.number_to_string(n).ljust(size, '\0')
+    return pol.serialization.number_to_string(n).ljust(size, b'\0')
 def decrypt(c1, c2, privkey, gp, size):
     s = pow(c1, privkey, gp.p)
-    invs = gmpy.invert(s, gp.p)
+    invs = gmpy2.invert(s, gp.p)
     return group_to_string((invs * c2) % gp.p, size)
 def encrypt(string, pubkey, gp, size, randfunc):
     # TODO how small may size be?

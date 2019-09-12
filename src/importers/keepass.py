@@ -1,12 +1,12 @@
 """ Read KeePass 1.x databases """
 
+import io
 import uuid
 import struct
 import logging
 import hashlib
 import binascii
 import datetime
-import cStringIO as StringIO
 
 # py-crypto
 import Crypto.Cipher.AES
@@ -17,7 +17,7 @@ class BadPasswordError(ValueError):
 class KeePassFormatError(ValueError):
     pass
 
-SIGNATURE = binascii.unhexlify('03d9a29a65fb4bb5')
+SIGNATURE = binascii.unhexlify(b'03d9a29a65fb4bb5')
 
 FLAG_SHA2       = 1
 FLAG_RIJNDAEL   = 2
@@ -31,19 +31,18 @@ def unpack_datetime(s):
     # yyyyyyyy yyyyyymm mmdddddh hhhhmmmm mmssssss
     if len(s) != 5:
         raise KeePassFormatError("Date/time data must be 5 bytes")
-    b = map(ord, s)
-    year  =  (b[0]               << 6) | (b[1] >> 2)
-    month = ((b[1] & 0b00000011) << 2) | (b[2] >> 6)
-    day   =  (b[2] & 0b00111111) >> 1
-    hour  =  (b[2] & 0b00000001) << 4  | (b[3] >> 4)
-    mins  = ((b[3] & 0b00001111) << 2) | (b[4] >> 6)
-    secs  =  (b[4] & 0b00111111)
+    year  =  (s[0]               << 6) | (s[1] >> 2)
+    month = ((s[1] & 0b00000011) << 2) | (s[2] >> 6)
+    day   =  (s[2] & 0b00111111) >> 1
+    hour  =  (s[2] & 0b00000001) << 4  | (s[3] >> 4)
+    mins  = ((s[3] & 0b00001111) << 2) | (s[4] >> 6)
+    secs  =  (s[4] & 0b00111111)
     return datetime.datetime(year, month, day, hour, mins, secs)
 
 def masterkey_to_finalkey(masterkey, master_seed, master_seed2, key_enc_rounds):
     key = hashlib.sha256(masterkey).digest()
     cipher = Crypto.Cipher.AES.new(master_seed2, Crypto.Cipher.AES.MODE_ECB)
-    for r in xrange(key_enc_rounds):
+    for r in range(key_enc_rounds):
         key = cipher.encrypt(key)
     key = hashlib.sha256(key).digest()
     return hashlib.sha256(master_seed + key).digest()
@@ -91,7 +90,7 @@ def load(f, password, keyfile=None):
     cipher = Crypto.Cipher.AES.new(finalkey, Crypto.Cipher.AES.MODE_CBC,
                                             encryption_iv)
     padded_plaintext = cipher.decrypt(ciphertext)
-    plaintext = padded_plaintext[:-ord(padded_plaintext[-1])]
+    plaintext = padded_plaintext[:-padded_plaintext[-1]]
 
     l.debug('Verifying hash ...')
     if hashlib.sha256(plaintext).digest() != contents_hash:
@@ -99,7 +98,7 @@ def load(f, password, keyfile=None):
 
     l.debug('Parsing groups ...')
     groups_found = 0
-    g = StringIO.StringIO(plaintext)
+    g = io.BytesIO(plaintext)
     groups = {}
     current_group = {}
     had = set()

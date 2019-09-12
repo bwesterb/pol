@@ -3,11 +3,12 @@
 import contextlib
 import termios
 import logging
-import getpass
+import getpass as _getpass
 import ctypes
 import select
 import string
 import fcntl
+import math
 import sys
 import os
 
@@ -30,7 +31,7 @@ def prompt_yes_or_no(prompt):
             ret = True
         if c == 'n':
             ret = False
-    print
+    print()
     return ret
 
 @contextlib.contextmanager
@@ -70,6 +71,9 @@ def wait_for_keypress():
             ret = 0
     return ret
 
+def getpass(prompt, prefix=''):
+    return _getpass.getpass(prompt, prefix).encode('utf-8')
+
 def zxcvbn_getpass(prompt, prefix='', allow_empty=True):
     """ Similar to getpass.getpass, but shows password strength while typing """
     pw = None
@@ -84,12 +88,19 @@ def zxcvbn_getpass(prompt, prefix='', allow_empty=True):
     with raw_mode():
         while True:
             if interacted and not pw and checked_strength_of != current:
-                strength = zxcvbn.password_strength(current)
-                checked_strength_of = current
-                text = '%-4s %3sb %s' % (strength['score'] * '*',
-                                int(strength['entropy']),
-                                strength['crack_time_display'])
-                sys.stderr.write('\033[55G\033[K%s\033[%sG' % (
+                if current:
+                    strength = zxcvbn.zxcvbn(current)
+                    entropy = int(math.log2(strength['guesses']))
+                    checked_strength_of = current
+                    text = '%-4s %3sb %s' % (
+                        strength['score'] * '*',
+                        entropy,
+                        strength['crack_times_display'][
+                            'offline_fast_hashing_1e10_per_second']
+                    )
+                else:
+                    text = ''
+                sys.stderr.write('\033[40G\033[K%s\033[%sG' % (
                             text, prompt_offset + 1))
                 sys.stderr.flush()
             c = sys.stdin.read(1)

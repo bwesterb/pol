@@ -55,7 +55,7 @@ setup(
     },
     entry_points = {
         'console_scripts': [
-                'pol = pol.main:entrypoint',
+                'pol = pol.cli:entrypoint',
             ]
         },
     classifiers = [

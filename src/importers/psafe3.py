@@ -1,22 +1,22 @@
 """ Code to read psafe3 databases """
 
+import io
 import hmac
 import uuid
 import struct
 import hashlib
 import logging
 import datetime
-import cStringIO as StringIO
 
 import twofish
 
 l = logging.getLogger(__name__)
 
-TAG = 'PWS3'
-EOF = 'PWS3-EOFPWS3-EOF'
+TAG = b'PWS3'
+EOF = b'PWS3-EOFPWS3-EOF'
 
 def sxor(s1, s2):
-    return ''.join(chr(ord(a) ^ ord(b)) for a, b in zip(s1, s2))
+    return bytes(a ^ b for a, b in zip(s1, s2))
 
 class BadPasswordError(ValueError):
     pass
@@ -32,7 +32,7 @@ def stretch_key(key, salt, niter):
     h.update(key)
     h.update(salt)
     H = h.digest()
-    for i in xrange(niter):
+    for i in range(niter):
         H = hashlib.sha256(H).digest()
     return H
 
@@ -55,7 +55,7 @@ def load(f, password):
     niter = struct.unpack("<I", f.read(4))[0]
 
     l.debug('Stretching password ...')
-    P2 = stretch_key(password, salt, niter)
+    P2 = stretch_key(password.encode('utf-8'), salt, niter)
     HP2 = hashlib.sha256(P2).digest()
     if HP2 != f.read(32):
         raise BadPasswordError
@@ -70,8 +70,8 @@ def load(f, password):
     prev_ct = IV
 
     l.debug('Decrypting ...')
-    plaintext = ''
-    hmac_data = ''
+    plaintext = b''
+    hmac_data = b''
     while True:
         ct = f.read(16)
         if ct == EOF:
@@ -80,7 +80,7 @@ def load(f, password):
         prev_ct = ct
 
     l.debug('Reading decrypted header ...')
-    g = StringIO.StringIO(plaintext)
+    g = io.BytesIO(plaintext)
     in_header = True
     header = {}
     record = {}

@@ -11,21 +11,18 @@ from src._version import __version__
 install_requires = [
     'pycrypto >=2.6',        # TODO do we need this version
     'msgpack-python >=0.2',  #      ibidem
-    'gmpy >=1.15, <2',       #      ibidem
+    'gmpy2 >=2',             #      ibidem
     'yappi >=0.62',          #      ibidem
     'lockfile >=0.8',        #      ibidem
-    'PyYAML >=3',            #      ibidem
-    'pyparsing >=1.5.6, <2.0.0', #   ibidem
-    'zxcvbn >=1.0',
-    'seccure >=0.2.3',
-    'demandimport >=0.2.1',
+    'PyYAML >=3.08',
+    'pyparsing >=2.3',       #      ibidem
+    'zxcvbn >=4.0',
+    'seccure >=0.4.0',
+    'demandimport >=0.3.4',
     'argon2-cffi >=16.1.0',
     'urwid >=1.3.0',
     'fuzzywuzzy >=0.10.0',
         ]
-
-if sys.version_info < (2, 7):
-    install_requires.append('argparse >= 0.8')
 
 base_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -40,7 +37,7 @@ setup(
     long_description=long_description,
     author='Bas Westerbaan',
     author_email='bas@westerbaan.name',
-    url='https://getpol.org',
+    url='https://github.com/bwesterb/pol',
     zip_safe=False,
     packages=['pol',
               'pol.tests',
@@ -58,14 +55,15 @@ setup(
     },
     entry_points = {
         'console_scripts': [
-                'pol = pol.main:entrypoint',
+                'pol = pol.cli:entrypoint',
             ]
         },
     classifiers = [
             'Development Status :: 4 - Beta',
             'Environment :: Console',
             'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-            'Programming Language :: Python :: 2.7',
+            'Programming Language :: Python :: 3.6',
+            'Programming Language :: Python :: 3.7',
             'Operating System :: POSIX',
             'Topic :: Security',
         ],

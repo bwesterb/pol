@@ -66,8 +66,8 @@ On Mac with homebrew
 
 ::
 
-    $ brew install python gmp
-    $ pip install pol
+    $ brew install python3 gmp mpfr libmpc
+    $ pip3 install pol
 
 On Mac with MacPorts
 ^^^^^^^^^^^^^^^^^^^^
@@ -77,16 +77,16 @@ Install `MacPorts`_. Then run
 ::
 
     $ sudo bash
-    # port install gmp py-pip py27-crypto
-    # pip-2.7 install pol
+    # port install gmp py-pip py36-crypto
+    # pip-3.6 install pol
 
 If you get ``pol: command not found`` when you try to run ``pol``, add
-``/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin`` to
+``/opt/local/Library/Frameworks/Python.framework/Versions/3.6/bin`` to
 your ``PATH``. For instance, like this:
 
 ::
 
-    $ echo 'export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/2.7/bin:$PATH' >> ~/.profile
+    $ echo 'export PATH=/opt/local/Library/Frameworks/Python.framework/Versions/3.6/bin:$PATH' >> ~/.profile
 
 Creating a safe
 ~~~~~~~~~~~~~~~
@@ -323,7 +323,7 @@ Others have been involved indirectly:
 ``pol`` builds on dozens of other (open source) projects, notably:
 
 - `pycrypto`_
-- `gmpy`_
+- `gmpy2`_
 - `seccure`_
 - `zxcvbn`_
 
@@ -334,7 +334,7 @@ Finally, the following projects have influenced the design.
 
 .. _Password Safe: http://passwordsafe.sourceforge.net/quickstart.shtml
 .. _pycrypto: https://www.dlitz.net/software/pycrypto/
-.. _gmpy: http://code.google.com/p/gmpy/
+.. _gmpy2: https://gmpy2.readthedocs.io
 .. _seccure: http://point-at-infinity.org/seccure/
 .. _zxcvbn: https://tech.dropbox.com/2012/04/zxcvbn-realistic-password-strength-estimation/
 .. _FORMAT.md: doc/FORMAT.md

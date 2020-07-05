@@ -2,7 +2,7 @@ import os
 import unittest
 import tempfile
 
-import pol.main
+import pol.cli
 
 class TestMain(unittest.TestCase):
     def setUp(self):
@@ -11,7 +11,7 @@ class TestMain(unittest.TestCase):
         self.config = tempfile.NamedTemporaryFile()
 
     def pol(self, *args):
-        ret = pol.main.entrypoint(['-s', self.safe.name,
+        ret = pol.cli.entrypoint(['-s', self.safe.name,
                                    '-C', self.config.name] + list(args))
         return 0 if ret is None else ret
     def test_basic(self):
@@ -33,8 +33,8 @@ class TestMain(unittest.TestCase):
         self.assertEqual(self.pol('touch'), 0)
         self.assertEqual(self.pol('export', '-p', 'a'), 0)
     def test_cracktime_names(self):
-        self.assertEqual(frozenset(pol.main.cracktime_names),
-                         frozenset(pol.main.cracktimes.keys()))
+        self.assertEqual(frozenset(pol.cli.cracktime_names),
+                         frozenset(list(pol.cli.cracktimes.keys())))
 
 
 if __name__ == '__main__':

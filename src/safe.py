@@ -24,7 +24,7 @@ import pol.kd
 
 import lockfile
 import msgpack
-import gmpy
+import gmpy2
 
 # TODO Generating random numbers seems CPU-bound.  Does the default random
 #      generator wait for a certain amount of entropy?
@@ -33,7 +33,7 @@ import Crypto.Random.random as random
 
 l = logging.getLogger(__name__)
 
-SAFE_MAGIC = 'pol\n' + binascii.unhexlify('d163d4977a2cf681ad9a6cfe98ab')
+SAFE_MAGIC = b'pol\n' + binascii.unhexlify(b'd163d4977a2cf681ad9a6cfe98ab')
 
 class MissingKey(ValueError):
     pass
@@ -72,7 +72,7 @@ def create(path, override=False, *args, **kwargs):
         locked = True
         if os.path.exists(path) and not override:
             raise SafeAlreadyExistsError
-        with _builtin_open(path, 'w') as f:
+        with _builtin_open(path, 'wb') as f:
             safe = Safe.generate(*args, **kwargs)
             yield safe
             safe.store_to_stream(f)
@@ -99,7 +99,7 @@ def open(path, readonly=False, progress=None, nworkers=None, use_threads=False,
         locked = True
         if not os.path.exists(path):
             raise SafeNotFoundError
-        with _builtin_open(path) as f:
+        with _builtin_open(path, 'rb') as f:
             safe = Safe.load_from_stream(f, nworkers, use_threads)
         yield safe
         if not readonly:
@@ -124,19 +124,19 @@ class Safe(object):
         self.data = data
         self.nworkers = nworkers
         self.use_threads = use_threads
-        if 'key-stretching' not in self.data:
+        if b'key-stretching' not in self.data:
             raise SafeFormatError("Missing `key-stretching' attribute")
-        if 'key-derivation' not in self.data:
+        if b'key-derivation' not in self.data:
             raise SafeFormatError("Missing `key-derivation' attribute")
-        if 'block-cipher' not in self.data:
+        if b'block-cipher' not in self.data:
             raise SafeFormatError("Missing `block-cipher' attribute")
-        if 'envelope' not in self.data:
+        if b'envelope' not in self.data:
             raise SafeFormatError("Missing `envelope' attribute")
-        self.ks = pol.ks.KeyStretching.setup(self.data['key-stretching'])
-        self.kd = pol.kd.KeyDerivation.setup(self.data['key-derivation'])
-        self.envelope = pol.envelope.Envelope.setup(self.data['envelope'])
+        self.ks = pol.ks.KeyStretching.setup(self.data[b'key-stretching'])
+        self.kd = pol.kd.KeyDerivation.setup(self.data[b'key-derivation'])
+        self.envelope = pol.envelope.Envelope.setup(self.data[b'envelope'])
         self.cipher = pol.blockcipher.BlockCipher.setup(
-                            self.data['block-cipher'])
+                            self.data[b'block-cipher'])
         self._touched = False
 
     def store_to_stream(self, stream):
@@ -146,7 +146,7 @@ class Safe(object):
         start_time = time.time()
         l.debug('Packing ...')
         stream.write(SAFE_MAGIC)
-        msgpack.pack(self.data, stream)
+        msgpack.pack(self.data, stream, use_bin_type=True)
         l.debug(' packed in %.2fs', time.time() - start_time)
 
     @staticmethod
@@ -160,15 +160,15 @@ class Safe(object):
         magic = stream.read(len(SAFE_MAGIC))
         if magic != SAFE_MAGIC:
             raise WrongMagicError
-        data = msgpack.unpack(stream, use_list=True)
+        data = msgpack.unpack(stream, use_list=True, raw=True)
         l.debug(' unpacked in %.2fs', time.time() - start_time)
-        if ('type' not in data or not isinstance(data['type'], basestring)
-                or data['type'] not in TYPE_MAP):
+        if (b'type' not in data or not isinstance(data[b'type'], bytes)
+                or data[b'type'] not in TYPE_MAP):
             raise SafeFormatError("Invalid `type' attribute")
-        return TYPE_MAP[data['type']](data, nworkers, use_threads)
+        return TYPE_MAP[data[b'type']](data, nworkers, use_threads)
 
     @staticmethod
-    def generate(typ='elgamal', *args, **kwargs):
+    def generate(typ=b'elgamal', *args, **kwargs):
         if typ not in TYPE_MAP:
             raise ValueError("I do not know Safe type %s" % typ)
         return TYPE_MAP[typ].generate(*args, **kwargs)
@@ -257,22 +257,22 @@ secret_tuple = collections.namedtuple('secret_tuple',
                         ('privkey', 'entries'))
 
 # Constants used for access slices
-AS_MAGIC = binascii.unhexlify('1a1a8ad7')  # starting bytes of an access slice
+AS_MAGIC = binascii.unhexlify(b'1a1a8ad7')  # starting bytes of an access slice
 AS_FULL = 0         # the access slice gives full access
 AS_LIST = 1         # the access slice gives list-only access
 AS_APPEND = 2       # the access slice gives append-only access
 
-MAIN_SLICE_MAGIC = binascii.unhexlify('33653efc')
-APPEND_SLICE_MAGIC = binascii.unhexlify('2d5039ba')
+MAIN_SLICE_MAGIC = binascii.unhexlify(b'33653efc')
+APPEND_SLICE_MAGIC = binascii.unhexlify(b'2d5039ba')
 
 # We derive multiple keys from one base key using hashing and
 # constants. For instance, given a base key K, the ElGamal private
 # key for of the n-th block is KeyDerivation(K, KD_ELGAMAL, n)
-KD_ELGAMAL = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KD_MARKER  = binascii.unhexlify('7884002aaa175df1b13724aa2b58682a')
-KD_SYMM    = binascii.unhexlify('4110252b740b03c53b1c11d6373743fb')
-KD_LIST    = binascii.unhexlify('d53d376a7db498956d7d7f5e570509d5')
-KD_APPEND  = binascii.unhexlify('76001c344cbd9e73a6b5bd48b67266d9')
+KD_ELGAMAL = binascii.unhexlify(b'd53d376a7db498956d7d7f5e570509d5')
+KD_MARKER  = binascii.unhexlify(b'7884002aaa175df1b13724aa2b58682a')
+KD_SYMM    = binascii.unhexlify(b'4110252b740b03c53b1c11d6373743fb')
+KD_LIST    = binascii.unhexlify(b'd53d376a7db498956d7d7f5e570509d5')
+KD_APPEND  = binascii.unhexlify(b'76001c344cbd9e73a6b5bd48b67266d9')
 
 
 class ElGamalSafe(Safe):
@@ -419,9 +419,11 @@ class ElGamalSafe(Safe):
                 return
             new_entries = []
             for raw_entry in self.append_data.entries:
-                new_entries.append(pol.serialization.string_to_son(
-                             self.safe.envelope.open(raw_entry,
-                                                self.secret_data.privkey)))
+                new_entries.append(
+                        pol.serialization.decode_bytes_in_son(
+                            pol.serialization.string_to_son(
+                                 self.safe.envelope.open(raw_entry,
+                                                self.secret_data.privkey))))
             if on_move_append_entries:
                 on_move_append_entries(new_entries)
             self.append_data = self.append_data._replace(entries=[])
@@ -441,8 +443,7 @@ class ElGamalSafe(Safe):
                 cipherstream = self.safe._cipherstream(self.full_key, iv)
                 # Filter entries that are marked for deletion
                 secret_data = self.secret_data._replace(
-                        entries=filter(lambda x: x is not None,
-                                        self.secret_data.entries))
+                        entries=[x for x in self.secret_data.entries if x is not None])
                 # Serialize and store
                 secrets_pt = pol.serialization.son_to_string(secret_data)
                 secrets_ct = cipherstream.encrypt(secrets_pt)
@@ -453,8 +454,7 @@ class ElGamalSafe(Safe):
                 assert self.list_key and self.main_slice
                 # Filter entries that are marked for deletion
                 main_data = self.main_data._replace(
-                        entries=filter(lambda x: x is not None,
-                                        self.main_data.entries))
+                        entries=[x for x in self.main_data.entries if x is not None])
                 # Serialize and store
                 main_pt = pol.serialization.son_to_string(main_data)
                 self.main_slice.store(self.list_key, main_pt, annex=annex)
@@ -462,7 +462,7 @@ class ElGamalSafe(Safe):
             if self.append_data:
                 assert self.append_key and self.append_slice
                 # First apply pending updates
-                for index, entry in self.append_data_updates.iteritems():
+                for index, entry in self.append_data_updates.items():
                     if entry is None:
                         self.append_data.entries[index] = None
                     else:
@@ -471,8 +471,7 @@ class ElGamalSafe(Safe):
                                     self.append_data.pubkey)
                 # Then, filter entries marked for deletion
                 append_data = self.append_data._replace(
-                        entries=filter(lambda x: x is not None,
-                                        self.append_data.entries))
+                        entries=[x for x in self.append_data.entries if x is not None])
                 # Serialize and store
                 append_pt = pol.serialization.son_to_string(append_data)
                 self.append_slice.store(self.append_key, append_pt, annex=annex)
@@ -483,10 +482,11 @@ class ElGamalSafe(Safe):
             if kind == 'm':
                 return ElGamalSafe.MainEntry(self, i)
             assert kind == 'a'
-            return ElGamalSafe.AppendEntry(self, i, 
-                                *self.safe.envelope.open(
-                                        self.append_data.entries[i],
+            entry = pol.serialization.decode_bytes_in_son(
+                            self.safe.envelope.open(
+                                    self.append_data.entries[i],
                                         self.secret_data.privkey))
+            return ElGamalSafe.AppendEntry(self, i, *entry)
 
         def list_ids(self):
             if not self.main_data:
@@ -512,9 +512,10 @@ class ElGamalSafe(Safe):
             # TODO cache?
             if self.secret_data and self.append_data:
                 for i, raw_entry in enumerate(self.append_data.entries):
-                    ret.append(ElGamalSafe.AppendEntry(self, i,
-                                *self.safe.envelope.open(raw_entry,
-                                        self.secret_data.privkey)))
+                    entry = pol.serialization.decode_bytes_in_son(
+                                self.safe.envelope.open(
+                                    raw_entry, self.secret_data.privkey))
+                    ret.append(ElGamalSafe.AppendEntry(self, i, *entry))
             return ret
 
         def get(self, key):
@@ -530,9 +531,10 @@ class ElGamalSafe(Safe):
                 for i, raw_entry in enumerate(self.append_data.entries):
                     if raw_entry is None:
                         continue
-                    entry = pol.serialization.string_to_son(
-                                self.safe.envelope.open(raw_entry,
-                                            self.secret_data.privkey))
+                    entry = pol.serialization.decode_bytes_in_son(
+                                pol.serialization.string_to_son(
+                                    self.safe.envelope.open(raw_entry,
+                                                self.secret_data.privkey)))
                     if entry[0] != key:
                         continue
                     yield ElGamalSafe.AppendEntry(self, i, *entry)
@@ -608,10 +610,10 @@ class ElGamalSafe(Safe):
             cipher = self.safe._cipherstream(key, iv)
             # Thirdly, prepare the ciphertext
             plaintext = (self.safe._index_to_bytes(len(self.indices))
-                          + ''.join([self.safe._index_to_bytes(index)
+                          + b''.join([self.safe._index_to_bytes(index)
                                       for index in self.indices[1:]])
                           + self.safe._slice_size_to_bytes(len(value))
-                          + value).ljust(bpb * len(self.indices), '\0')
+                          + value).ljust(bpb * len(self.indices), b'\0')
             ciphertext = (self.safe.kd([self.safe._cipherstream_key(key)],
                                         length=self.safe.cipher.blocksize)
                                 + iv
@@ -655,41 +657,41 @@ class ElGamalSafe(Safe):
         self._opened_containers = {}
         # Check if `data' makes sense.
         self.free_blocks = set([])
-        for attr in ('group-params', 'n-blocks', 'blocks', 'block-index-size',
-                            'slice-size'):
+        for attr in (b'group-params', b'n-blocks', b'blocks',
+                        b'block-index-size', b'slice-size'):
             if not attr in data:
                 raise SafeFormatError("Missing attr `%s'" % attr)
-        for attr, _type in {'blocks': list,
-                            'group-params': list,
-                            'block-index-size': int,
-                            'slice-size': int,
-                            'bytes-per-block': int,
-                            'n-blocks': int}.iteritems():
+        for attr, _type in {b'blocks': list,
+                            b'group-params': list,
+                            b'block-index-size': int,
+                            b'slice-size': int,
+                            b'bytes-per-block': int,
+                            b'n-blocks': int}.items():
             if not isinstance(data[attr], _type):
                 raise SafeFormatError("`%s' should be a `%s'" % (attr, _type))
-        if not len(data['blocks']) == data['n-blocks']:
+        if not len(data[b'blocks']) == data[b'n-blocks']:
             raise SafeFormatError("Amount of blocks isn't `n-blocks'")
-        if not len(data['group-params']) == 2:
+        if not len(data[b'group-params']) == 2:
             raise SafeFormatError("`group-params' should contain 2 elements")
         # TODO Should we check whether the group parameters are safe?
-        for x in data['group-params']:
-            if not isinstance(x, basestring):
-                raise SafeFormatError("`group-params' should contain strings")
-        if data['slice-size'] == 2:
+        for x in data[b'group-params']:
+            if not isinstance(x, bytes):
+                raise SafeFormatError("`group-params' should contain bytes")
+        if data[b'slice-size'] == 2:
             self._slice_size_struct = struct.Struct('>H')
-        elif data['slice-size'] == 4:
+        elif data[b'slice-size'] == 4:
             self._slice_size_struct = struct.Struct('>I')
         else:
             raise SafeFormatError("`slice-size' invalid")
-        if data['block-index-size'] == 1:
+        if data[b'block-index-size'] == 1:
             self._block_index_struct = struct.Struct('>B')
-        elif data['block-index-size'] == 2:
+        elif data[b'block-index-size'] == 2:
             self._block_index_struct = struct.Struct('>H')
-        elif data['block-index-size'] == 4:
+        elif data[b'block-index-size'] == 4:
             self._block_index_struct = struct.Struct('>I')
         else:
             raise SafeFormatError("`block-index-size' invalid")
-        if 2** (data['bytes-per-block']*8) >= self.group_params.p:
+        if 2** (data[b'bytes-per-block']*8) >= self.group_params.p:
             raise SafeFormatError("`bytes-per-block' larger than "+
                                   "`group-params' allow")
     @staticmethod
@@ -716,25 +718,25 @@ class ElGamalSafe(Safe):
         if envelope is None:
             envelope = pol.envelope.Envelope.setup()
         # Now, calculate the useful bytes per block
-        bytes_per_block = (gp_bits - 1) / 8
+        bytes_per_block = (gp_bits - 1) // 8
         bytes_per_block = bytes_per_block - bytes_per_block % cipher.blocksize
         # Initialize the safe object
         safe = ElGamalSafe(
-                {'type': 'elgamal',
-                 'n-blocks': n_blocks,
-                 'bytes-per-block': bytes_per_block,
-                 'block-index-size': block_index_size,
-                 'slice-size': slice_size,
-                 'group-params': [pol.serialization.number_to_string(x)
+                {b'type': b'elgamal',
+                 b'n-blocks': n_blocks,
+                 b'bytes-per-block': bytes_per_block,
+                 b'block-index-size': block_index_size,
+                 b'slice-size': slice_size,
+                 b'group-params': [pol.serialization.number_to_string(x)
                                          for x in gp],
-                 'key-stretching': ks.params,
-                 'key-derivation': kd.params,
-                 'envelope': envelope.params,
-                 'block-cipher': cipher.params,
-                 'blocks': [['','','',''] for i in xrange(n_blocks)]},
+                 b'key-stretching': ks.params,
+                 b'key-derivation': kd.params,
+                 b'envelope': envelope.params,
+                 b'block-cipher': cipher.params,
+                 b'blocks': [[b'',b'',b'',b''] for i in range(n_blocks)]},
                         nworkers, use_threads)
         # Mark all blocks as free
-        safe.mark_free(xrange(n_blocks))
+        safe.mark_free(range(n_blocks))
         return safe
 
     def open_containers(self, password, additional_keys=None, autosave=True,
@@ -745,6 +747,7 @@ class ElGamalSafe(Safe):
             If there are entries in the append-slice, `on_move_append_entries'
             will be called with the entries as only argument. """
         l.debug('open_containers: Stretching key')
+        assert isinstance(password, bytes) # XXX
         access_key = self.ks(self._composite_password(
                                     password, additional_keys))
         l.debug('open_containers: Searching for access slice ...')
@@ -786,6 +789,11 @@ class ElGamalSafe(Safe):
             main_slice = self._load_slice(list_key, main_index)
             main_data = main_tuple(*pol.serialization.string_to_son(
                                     main_slice.value))
+            # msgpack has converted our key/note str()s to bytes()s;
+            # convert then back.
+            main_data = main_data._replace(
+                entries=pol.serialization.decode_bytes_in_son(
+                    main_data.entries))
             append_key = self.kd([list_key, KD_APPEND])
             append_index = main_data.append_index
         # Now, read secret data if we have access
@@ -793,6 +801,11 @@ class ElGamalSafe(Safe):
             cipherstream = self._cipherstream(full_key, main_data.iv)
             secret_data = secret_tuple(*pol.serialization.string_to_son(
                             cipherstream.decrypt(main_data.secrets)))
+            # msgpack has converted our secret str()s to bytes()s;
+            # convert then back.
+            secret_data = secret_data._replace(
+                entries=pol.serialization.decode_bytes_in_son(
+                    secret_data.entries))
         # Read the append-data, if it exists
         if append_index is not None:
             append_slice = self._load_slice(append_key, append_index)
@@ -928,30 +941,30 @@ class ElGamalSafe(Safe):
     @property
     def nblocks(self):
         """ Number of blocks. """
-        return self.data['n-blocks']
+        return self.data[b'n-blocks']
 
     @property
     def bytes_per_block(self):
         """ Number of bytes stored per block. """
-        return self.data['bytes-per-block']
+        return self.data[b'bytes-per-block']
 
     @property
     def block_index_size(self):
         """ Size of a block index. """
-        return self.data['block-index-size']
+        return self.data[b'block-index-size']
 
     @property
     def slice_size(self):
         """ The size of the sizefield of a slice.
             Thus actually: slice_size_size """
-        return self.data['slice-size']
+        return self.data[b'slice-size']
 
     @property
     def group_params(self):
         """ The group parameters. """
         return pol.elgamal.group_parameters(
                     *[pol.serialization.string_to_number(x)
-                        for x in self.data['group-params']])
+                        for x in self.data[b'group-params']])
 
     def mark_free(self, indices):
         """ Marks the given indices as free. """
@@ -965,7 +978,7 @@ class ElGamalSafe(Safe):
         sl.trash()
 
     def autosave_containers(self):
-        for container_ref in self._opened_containers.itervalues():
+        for container_ref in self._opened_containers.values():
             container = container_ref()
             if container and container.autosave and container.unsaved_changes:
                 container.save()
@@ -983,13 +996,13 @@ class ElGamalSafe(Safe):
                     self.nblocks, nworkers)
         start_time = time.time()
         gp = self.group_params
-        self.data['blocks'] = pol.parallel.parallel_map(_eg_rerandomize_block,
-                        self.data['blocks'], args=(gp.g, gp.p),
+        self.data[b'blocks'] = pol.parallel.parallel_map(_eg_rerandomize_block,
+                        self.data[b'blocks'], args=(gp.g, gp.p),
                         nworkers=nworkers, use_threads=use_threads,
                         initializer=_eg_rerandomize_block_initializer,
                         chunk_size=16, progress=_progress)
         secs = time.time() - start_time
-        kbps = self.nblocks * gmpy.numdigits(gp.p,2) / 1024.0 / 8.0 / secs
+        kbps = self.nblocks * gmpy2.num_digits(gp.p,2) / 1024.0 / 8.0 / secs
         if progress is not None:
             progress(1.0)
         l.debug(" done in %.2fs; that is %.2f KB/s", secs, kbps)
@@ -1012,7 +1025,7 @@ class ElGamalSafe(Safe):
         symmkey_hash = self.kd([self._cipherstream_key(key)],
                             length=self.cipher.blocksize)
         # TODO parallelize this
-        for index in xrange(self.nblocks):
+        for index in range(self.nblocks):
             try:
                 pt = self._eg_decrypt_block(key, index)
             except WrongKeyError:
@@ -1058,11 +1071,11 @@ class ElGamalSafe(Safe):
             offset += self.block_index_size
             indices_to_read -= 1
         # Read the remaining blocks
-        pt += ''.join(pol.parallel.parallel_map(
+        pt += b''.join(pol.parallel.parallel_map(
                 self._load_block,
                 [(ii*self.bytes_per_block - self.cipher.blocksize*2,
                                 indices[ii])
-                        for ii in xrange(indexindex+1, len(indices))],
+                        for ii in range(indexindex+1, len(indices))],
                 args=(self._cipherstream_key(key), key, iv),
                 initializer=self._load_block_initializer,
                 nworkers=self.nworkers,
@@ -1117,21 +1130,21 @@ class ElGamalSafe(Safe):
     def _eg_decrypt_block(self, key, index):
         """ Decrypts the block `index' with `key' """
         marker = self._marker_for_block(key, index)
-        if self.data['blocks'][index][3] != marker:
+        if self.data[b'blocks'][index][3] != marker:
             raise WrongKeyError
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
-        c1 = pol.serialization.string_to_number(self.data['blocks'][index][0])
-        c2 = pol.serialization.string_to_number(self.data['blocks'][index][1])
+        c1 = pol.serialization.string_to_number(self.data[b'blocks'][index][0])
+        c2 = pol.serialization.string_to_number(self.data[b'blocks'][index][1])
         return pol.elgamal.decrypt(c1, c2, privkey, gp, self.bytes_per_block)
     def _write_block(self, index, block):
         """ Apply changes returned by `_eg_encrypt_block'. """
-        self.data['blocks'][index][0] = block[0]
-        self.data['blocks'][index][1] = block[1]
+        self.data[b'blocks'][index][0] = block[0]
+        self.data[b'blocks'][index][1] = block[1]
         if block[2] is not None:
-            self.data['blocks'][index][2] = block[2]
+            self.data[b'blocks'][index][2] = block[2]
         if block[3] is not None:
-            self.data['blocks'][index][3] = block[3]
+            self.data[b'blocks'][index][3] = block[3]
     def _eg_encrypt_block(self, key, index, s, randfunc, annex=False):
         """ Returns the changed entries for block `index' such that it
             encrypts `s' using `key'.  Use `_write_block' to apply. """
@@ -1142,7 +1155,7 @@ class ElGamalSafe(Safe):
         privkey = self._privkey_for_block(key, index)
         gp = self.group_params
         marker = self._marker_for_block(key, index)
-        if self.data['blocks'][index][3] != marker:
+        if self.data[b'blocks'][index][3] != marker:
             if not annex:
                 raise WrongKeyError
             pubkey = pol.elgamal.pubkey_from_privkey(privkey, gp)
@@ -1151,7 +1164,7 @@ class ElGamalSafe(Safe):
             ret[3] = marker
         else:
             pubkey = pol.serialization.string_to_number(
-                        self.data['blocks'][index][2])
+                        self.data[b'blocks'][index][2])
         # TODO is it safe to pick r so much smaller than p?
         c1, c2 = pol.elgamal.encrypt(s, pubkey, gp,
                                      self.bytes_per_block, randfunc)
@@ -1178,4 +1191,4 @@ def _eg_rerandomize_block(raw_b, g, p):
     raw_b[1] = pol.serialization.number_to_string(b[1])
     return raw_b
 
-TYPE_MAP = {'elgamal': ElGamalSafe}
+TYPE_MAP = {b'elgamal': ElGamalSafe}

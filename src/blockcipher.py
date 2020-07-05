@@ -31,12 +31,12 @@ class BlockCipher(object):
     def setup(params=None):
         """ Set-up the blockcipher given by `params`. """
         if params is None:
-            params = {'type': 'aes',
-                      'bits': 256 }
-        if ('type' not in params or not isinstance(params['type'], basestring)
-                or params['type'] not in TYPE_MAP):
+            params = {b'type': b'aes',
+                      b'bits': 256 }
+        if (b'type' not in params or not isinstance(params[b'type'], bytes)
+                or params[b'type'] not in TYPE_MAP):
             raise BlockCipherParameterError("Invalid `type' attribute")
-        return TYPE_MAP[params['type']](params)
+        return TYPE_MAP[params[b'type']](params)
 
     @property
     def blocksize(self):
@@ -54,8 +54,10 @@ class _AESStream(BaseStream):
     def __init__(self, cipher):
         self.cipher = cipher
     def encrypt(self, s):
+        assert isinstance(s, bytes)  # XXX
         return self.cipher.encrypt(s)
     def decrypt(self, s):
+        assert isinstance(s, bytes)  # XXX
         return self.cipher.decrypt(s)
 
 class AESBlockCipher(BlockCipher):
@@ -63,20 +65,22 @@ class AESBlockCipher(BlockCipher):
 
     def __init__(self, params):
         super(AESBlockCipher, self).__init__(params)
-        if not 'bits' in params or params['bits'] not in (256, ):
-            raise KeyStretchingParameterError("Invalid param `bits'")
-        self.bits = params['bits']
+        if not b'bits' in params or params[b'bits'] not in (256, ):
+            raise BlockCipherParameterError("Invalid param `bits'")
+        self.bits = params[b'bits']
 
     def new_stream(self, key, iv, offset=0):
+        assert isinstance(key, bytes) # XXX
+        assert isinstance(iv, bytes)  # XXX
         if offset % 16 != 0:
             raise ValueError("`offset' should be a multiple of 16")
         if len(key) * 8 != self.bits:
-            raise ValueError("`key' should be %s long" % (self.bits/8))
+            raise ValueError("`key' should be %s long" % (self.bits//8))
         if len(iv) != 16:
             raise ValueError("`iv' should be 16 bytes long")
         ctr = Crypto.Util.Counter.new(128,
                     initial_value=pol.serialization.string_to_number(iv)
-                                + offset/16)
+                                + offset//16)
         cipher = Crypto.Cipher.AES.new(key, Crypto.Cipher.AES.MODE_CTR,
                                             counter=ctr)
         return _AESStream(cipher)
@@ -86,7 +90,7 @@ class AESBlockCipher(BlockCipher):
         return 16
     @property
     def keysize(self):
-        return self.bits / 8
+        return self.bits // 8
 
 
-TYPE_MAP = {'aes': AESBlockCipher}
+TYPE_MAP = {b'aes': AESBlockCipher}

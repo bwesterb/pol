@@ -3,13 +3,13 @@ import functools
 
 import pol.elgamal
 
-import gmpy
+import gmpy2
 
 class TestGroupParametersBase(unittest.TestCase):
     def _test_gp(self, gp, bits):
-        q = (gp.p - 1) / 2
-        self.assertTrue(gmpy.is_prime(gp.p))
-        self.assertTrue(gmpy.is_prime(q))
+        q = (gp.p - 1) // 2
+        self.assertTrue(gmpy2.is_prime(gp.p))
+        self.assertTrue(gmpy2.is_prime(q))
         self.assertTrue(2**(bits-1) < gp.p)
         self.assertTrue(gp.p < 2**bits)
         self.assertTrue(gp.g < gp.p)
@@ -17,7 +17,7 @@ class TestGroupParametersBase(unittest.TestCase):
         self.assertNotEqual(pow(gp.g, 2, gp.p), 1)
         self.assertNotEqual(pow(gp.g, q, gp.p), 1)
         self.assertNotEqual(divmod(gp.p, gp.g)[1], 0)
-        ginv = gmpy.invert(gp.g, gp.p)
+        ginv = gmpy2.invert(gp.g, gp.p)
         self.assertNotEqual(divmod(gp.p - 1, ginv)[1], 0)
 
 class TestPrecomputedGroupParameters(TestGroupParametersBase):

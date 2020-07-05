@@ -1,7 +1,7 @@
 """ parser and dumper for the file format used by `pol edit' """
 
 import re
-import cStringIO as StringIO
+import io as StringIO
 from pyparsing import ParseException, ParseBaseException
 
 # TODO add unittests
@@ -58,12 +58,7 @@ def create_grammar(container_ids, secret_ids):
     whiteSpaceChars = ' \t'
     ParserElement.setDefaultWhitespaceChars(whiteSpaceChars)
     word = Empty() + CharsNotIn(whiteSpaceChars + '\n')
-    quotedString = QuotedString(quoteChar='"', escChar='\\').setParseAction(
-                        # NOTE the second replace is a work-around for
-                        #      pyparsing bug #68.
-                        #       https://sourceforge.net/p/pyparsing/bugs/68/
-                        lambda s,l,t: t[0].replace("\\n", "\n").replace(
-                                                   "\\\\", "\\"))
+    quotedString = QuotedString(quoteChar='"', escChar='\\')
     def secretIdNumberParseAction(s, loc, tokens):
         v = int(tokens[0])
         if not v in secret_ids:
@@ -182,7 +177,7 @@ def dump(d):
     show_container_headers = (len(d) != 1)
     # First step: convert and escape values
     d2 = {}
-    for container_id, entries in d.iteritems():
+    for container_id, entries in d.items():
         d2[container_id] = []
         for key, secret, note in entries:
             d2[container_id].append((
@@ -193,13 +188,13 @@ def dump(d):
     # Now, determine alignment
     max_key_len = max(max(len(key) for key, secret, note in entries)
                                 if entries else 1
-                            for entries in d2.itervalues())
+                            for entries in d2.values())
     max_secret_len = max(max(len(secret) for key, secret, note in entries)
                                 if entries else 1
-                            for entries in d2.itervalues())
+                            for entries in d2.values())
     first_container = True
     # And dump!
-    for container_id, entries in d2.iteritems():
+    for container_id, entries in d2.items():
         if first_container:
             first_container = False
         else:

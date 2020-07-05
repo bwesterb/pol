@@ -1,7 +1,7 @@
 """ Extensions to Python's multiprocessing. """
 
 import time
-import Queue
+import queue
 import threading
 import multiprocessing
 
@@ -62,17 +62,17 @@ def parallel_map(func, seq, args=None, kwargs=None, chunk_size=1,
     ret = [None]*N
     constr = threading.Thread if use_threads else multiprocessing.Process
     try:
-        for i in xrange(nworkers):
+        for i in range(nworkers):
             process = constr(target=worker, args=(func, args, kwargs, p_output,
                                                     p_input, initializer))
             processes.append(process)
             process.start()
         # Add the elements to be mapped to the queue
-        for i in xrange(0, N, chunk_size):
+        for i in range(0, N, chunk_size):
             p_output.put((i, seq[i:i+chunk_size]))
         # and after that sentinels to signal the end
         # of the queue, one for each worker
-        for i in xrange(nworkers):
+        for i in range(nworkers):
             p_output.put(None)
         next_update = (time.time() + progress_interval
                             if progress else float('inf'))
@@ -152,7 +152,7 @@ def parallel_try(func, args=None, kwargs=None, nworkers=None, progress=None,
     processes = []
     constr = threading.Thread if use_threads else multiprocessing.Process
     try:
-        for i in xrange(nworkers):
+        for i in range(nworkers):
             process = constr(target=worker, args=(func, args, kwargs, p_lock,
                                         p_done, p_input, p_counter,
                                         initializer))

@@ -66,8 +66,8 @@ On Mac with homebrew
 
 ::
 
-    $ brew install python gmp
-    $ pip install pol
+    $ brew install python3 gmp mpfr libmpc
+    $ pip3 install pol
 
 On Mac with MacPorts
 ^^^^^^^^^^^^^^^^^^^^
